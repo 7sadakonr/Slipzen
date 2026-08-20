@@ -39,3 +39,13 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.env
+
+# Supabase
+supabase/.temp/
+# Agent & Docs
+.claude/
+AGENTS.md
+CLAUDE.md
+doc/
+docs/
