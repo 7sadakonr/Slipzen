@@ -45,7 +45,11 @@ export default function AnalyticsScreen() {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer} 
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         {isLoading ? (
           <View style={{ gap: spacing.md }}>
             <View style={styles.summaryGrid}>
@@ -169,9 +173,6 @@ export default function AnalyticsScreen() {
                 ))}
               </View>
             )}
-            
-            {/* Bottom padding for tab bar + fab */}
-            <View style={{ height: 100 }} />
           </>
         )}
       </ScrollView>

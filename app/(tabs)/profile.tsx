@@ -65,7 +65,10 @@ export default function ProfileScreen() {
 
   return (
     <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView 
+        contentContainerStyle={styles.container}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <View style={styles.header}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>

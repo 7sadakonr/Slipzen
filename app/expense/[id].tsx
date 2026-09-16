@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { CategoryPicker } from '../../features/categories/components/category-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassView } from 'expo-glass-effect';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
 
 export default function ExpenseDetailScreen() {
@@ -25,6 +26,7 @@ export default function ExpenseDetailScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [note, setNote] = useState('');
+  const [imageLoading, setImageLoading] = useState(true);
 
   // Sync state when entering edit mode
   useEffect(() => {
@@ -110,9 +112,11 @@ export default function ExpenseDetailScreen() {
       >
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.editHeader}>
-            <TouchableOpacity onPress={() => setIsEditing(false)}>
-              <Ionicons name="close" size={28} color={colors.primary} />
-            </TouchableOpacity>
+            <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={styles.iconBtnGlass}>
+              <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.iconBtnInner}>
+                <Ionicons name="close" size={24} color={colors.primary} />
+              </TouchableOpacity>
+            </GlassView>
             <Text style={styles.editTitle}>Edit Expense</Text>
             <View style={{width: 28}} />
           </View>
@@ -134,21 +138,25 @@ export default function ExpenseDetailScreen() {
     );
   }
 
-  const [imageLoading, setImageLoading] = useState(true);
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.topActions}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={styles.iconBtnGlass}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtnInner}>
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </GlassView>
         <View style={styles.rightActions}>
-          <TouchableOpacity onPress={() => setIsEditing(true)} style={[styles.iconBtn, {marginRight: 16}]}>
-            <Ionicons name="pencil" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.iconBtn}>
-            <Ionicons name="trash" size={24} color={colors.danger} />
-          </TouchableOpacity>
+          <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={[styles.iconBtnGlass, {marginRight: 12}]}>
+            <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.iconBtnInner}>
+              <Ionicons name="pencil" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </GlassView>
+          <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={styles.iconBtnGlass}>
+            <TouchableOpacity onPress={handleDelete} style={styles.iconBtnInner}>
+              <Ionicons name="trash" size={20} color={colors.danger} />
+            </TouchableOpacity>
+          </GlassView>
         </View>
       </View>
 
@@ -228,7 +236,8 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, ...typography.body },
   topActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing['2xl'], marginTop: spacing['2xl'] },
   rightActions: { flexDirection: 'row' },
-  iconBtn: { padding: spacing.xs },
+  iconBtnGlass: { borderRadius: 20, overflow: 'hidden' },
+  iconBtnInner: { padding: spacing.sm, justifyContent: 'center', alignItems: 'center' },
   editHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing['2xl'], marginTop: spacing['2xl'] },
   editTitle: { ...typography.title3, color: colors.textPrimary },
   header: { alignItems: 'center', marginBottom: spacing['3xl'] },

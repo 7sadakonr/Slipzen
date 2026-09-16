@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCategories } from '../../features/categories/hooks/use-categories';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
@@ -7,6 +7,7 @@ import { ScreenWrapper } from '../../components/layout/screen-wrapper';
 import { Skeleton } from '../../components/ui/skeleton';
 import { ErrorView } from '../../components/feedback/error-view';
 import { EmptyState } from '../../components/feedback/empty-state';
+import { GlassView } from 'expo-glass-effect';
 
 export default function CategoriesScreen() {
   const router = useRouter();
@@ -96,13 +97,15 @@ export default function CategoriesScreen() {
         }
       />
 
-      <TouchableOpacity 
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => router.push('/categories/edit')}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
+      <GlassView isInteractive tintColor="rgba(0, 0, 0, 0.9)" style={styles.fabGlass}>
+        <TouchableOpacity 
+          style={styles.fabTouchable}
+          activeOpacity={0.7}
+          onPress={() => router.push('/categories/add')}
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+      </GlassView>
     </ScreenWrapper>
   );
 }
@@ -188,17 +191,18 @@ const styles = StyleSheet.create({
     ...typography.callout,
     color: colors.textSecondary,
   },
-  fab: {
+  fabGlass: {
     position: 'absolute',
     bottom: spacing['3xl'],
     right: spacing['2xl'],
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primary,
+  },
+  fabTouchable: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.fab,
   },
   fabIcon: {
     fontSize: 28,

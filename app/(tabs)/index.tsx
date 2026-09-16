@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenWrapper } from '../../components/layout/screen-wrapper';
 import { Button } from '../../components/ui/button';
-import { MonthPicker } from '../../components/ui/month-picker';
 import { useDashboardStats } from '../../features/transactions/hooks/use-dashboard-stats';
 import { useBudgetStatus } from '../../features/budgets/hooks/use-budget-status';
 import { useProfile } from '../../features/auth/hooks/use-profile';
@@ -14,53 +13,48 @@ import { formatCurrency } from '../../utils/format';
 import { InsightCard } from '../../features/insights/components/insight-card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { EmptyState } from '../../components/feedback/empty-state';
+import { SlipzenLogo } from '../../components/ui/slipzen-logo';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const [filterDate, setFilterDate] = useState(new Date());
+  
+  const now = new Date();
   
   const { data: profile } = useProfile();
   const currency = profile?.currency || 'THB';
-  const month = filterDate.getMonth() + 1;
-  const year = filterDate.getFullYear();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
   
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(year, filterDate.getMonth());
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(year, now.getMonth());
   const { data: budgets, isLoading: budgetsLoading } = useBudgetStatus(month, year);
 
   const overallBudget = budgets?.find(b => b.isOverall);
-  
-  // Greeting logic
-  const hour = new Date().getHours();
-  let greeting = 'Good evening';
-  if (hour < 12) greeting = 'Good morning';
-  else if (hour < 18) greeting = 'Good afternoon';
-  
-  const displayName = profile?.display_name?.split(' ')[0] || 'User';
 
   const isLoading = statsLoading || budgetsLoading;
 
   return (
     <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Month Selector */}
-        <MonthPicker 
-          currentDate={filterDate} 
-          onChange={setFilterDate} 
-        />
-
-        {/* Header Greeting */}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Logo */}
         <View style={styles.headerTitleRow}>
-          <Text style={styles.greeting}>{greeting}, {displayName}</Text>
+          <SlipzenLogo width={120} height={36} color={colors.textPrimary} />
         </View>
 
         {/* Primary Budget / Spending Card */}
         <View style={styles.mainCard}>
-          <Text style={styles.mainCardLabel}>Total Spending</Text>
+          <View style={styles.spendingHeaderRow}>
+            <Text style={styles.mainCardLabel}>Total Spending</Text>
+            <Text style={styles.mainCardLabel}>This Month</Text>
+          </View>
+
           {isLoading ? (
-            <View style={{ gap: spacing.md, marginVertical: spacing.md }}>
-              <Skeleton height={40} width="60%" />
-              <Skeleton height={20} width="100%" />
-            </View>
+             <View style={{ gap: spacing.md, marginVertical: spacing.md }}>
+               <Skeleton height={40} width="60%" />
+               <Skeleton height={20} width="100%" />
+             </View>
           ) : (
             <Text style={styles.mainAmount}>
               {formatCurrency(stats?.total || 0, currency)}
@@ -79,7 +73,7 @@ export default function DashboardScreen() {
                   style={[
                     styles.progressBar, 
                     { width: `${Math.min(overallBudget.percentage, 100)}%`, 
-                      backgroundColor: overallBudget.percentage >= 100 ? colors.danger : overallBudget.percentage >= 80 ? colors.warning : colors.primary 
+                      backgroundColor: colors.textPrimary 
                     }
                   ]} 
                 />
@@ -95,74 +89,113 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* 7-Day Spending Trend Mini Chart */}
-        {!isLoading && stats?.trend && stats.trend.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Spending Trend</Text>
-            <View style={styles.trendContainer}>
-              {stats.trend.map((day, idx) => {
-                const maxDay = Math.max(...stats.trend.map(d => d.total));
-                const height = maxDay > 0 ? (day.total / maxDay) * 100 : 0;
-                return (
-                  <View key={idx} style={styles.trendBarWrap}>
-                    <View style={styles.trendBarBg}>
-                      <View style={[styles.trendBarFill, { height: `${height}%` }]} />
-                    </View>
-                    <Text style={styles.trendDayLabel}>{format(day.date, 'dd')}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         {/* AI Insight Card */}
         <InsightCard />
 
-        {/* Categories */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Categories</Text>
-            <TouchableOpacity onPress={() => router.push('/transactions')}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
+        {/* Recent Transactions */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <TouchableOpacity onPress={() => router.push('/transactions')}>
+            <Text style={styles.seeAll}>See all</Text>
+          </TouchableOpacity>
+        </View>
+
+        {isLoading && (
+          <View style={{ gap: spacing.md, marginTop: spacing.md, marginBottom: spacing['2xl'] }}>
+            <Skeleton height={200} width="100%" borderRadius={radius.xl} />
           </View>
-          
-          {isLoading && (
-            <View style={{ gap: spacing.md, marginTop: spacing.md }}>
-              <Skeleton height={50} width="100%" />
-              <Skeleton height={50} width="100%" />
-              <Skeleton height={50} width="100%" />
-            </View>
-          )}
-          
-          {stats?.topCategories.length === 0 && !isLoading && (
-            <EmptyState 
-              ionicon="receipt-outline" 
-              title="No expenses this month" 
-              subtitle="Add an expense to see your categories." 
-            />
-          )}
-          
-          {stats?.topCategories.map((cat: any, idx: number) => (
-            <View key={idx} style={styles.categoryRow}>
-              <View style={styles.catLeft}>
-                <Text style={styles.catIcon}>{cat.icon}</Text>
-                <Text style={styles.categoryName}>{cat.name}</Text>
-              </View>
-              <Text style={styles.categoryTotal}>{formatCurrency(cat.total, currency)}</Text>
-            </View>
-          ))}
+        )}
+
+        {!isLoading && stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
+          <View style={styles.listCard}>
+            {stats.recentTransactions.map((tx: any, idx: number) => {
+              const bgColors = ['#FFF4E5', '#F3F0FF', '#E8F5E9', '#E3F2FD', '#FCE4EC'];
+              const bgColor = bgColors[idx % bgColors.length];
+              const isLast = idx === stats.recentTransactions.length - 1;
+              return (
+                <View key={idx}>
+                  <View style={styles.listRow}>
+                    <View style={[styles.listIconWrapper, { backgroundColor: bgColor }]}>
+                      <Text style={styles.listIcon}>{(tx.categories as any)?.icon || '💸'}</Text>
+                    </View>
+                    <View style={styles.listBody}>
+                      <View style={styles.listBodyTop}>
+                        <Text style={styles.listTitle} numberOfLines={1}>{tx.merchant}</Text>
+                        <Text style={styles.listAmount}>{formatCurrency(parseFloat(tx.amount), currency)}</Text>
+                      </View>
+                      <Text style={styles.listSubtitle}>{format(new Date(tx.transaction_date), 'MMM dd, yyyy')}</Text>
+                    </View>
+                  </View>
+                  {!isLast && <View style={styles.listDivider} />}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {/* Top Categories */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Top Categories</Text>
+          <TouchableOpacity onPress={() => router.push('/transactions')}>
+            <Text style={styles.seeAll}>See all</Text>
+          </TouchableOpacity>
         </View>
         
-        {/* Quick Add Button */}
-        <View style={styles.actions}>
-          <Button 
-            title="+ Add Expense" 
-            onPress={() => router.push('/expense/add')}
-            style={styles.addButton}
-          />
-        </View>
+        {isLoading && (
+          <View style={{ gap: spacing.md, marginTop: spacing.md }}>
+            <Skeleton height={200} width="100%" borderRadius={radius.xl} />
+          </View>
+        )}
+        
+        {stats?.topCategories.length === 0 && !isLoading && (
+          <View style={styles.listCard}>
+            <EmptyState 
+              ionicon="receipt-outline" 
+              title="No expenses" 
+              subtitle="Add an expense to see your categories." 
+            />
+          </View>
+        )}
+        
+        {!isLoading && stats?.topCategories && stats.topCategories.length > 0 && (
+          <View style={styles.listCard}>
+            {stats.topCategories.map((cat: any, idx: number) => {
+              const budget = budgets?.find(b => !b.isOverall && b.categoryName === cat.name);
+              const bgColors = ['#FFF4E5', '#F3F0FF', '#E8F5E9', '#E3F2FD', '#FCE4EC'];
+              const bgColor = bgColors[idx % bgColors.length];
+              const isLast = idx === stats.topCategories.length - 1;
+              
+              return (
+                <View key={idx}>
+                  <View style={styles.listRow}>
+                    <View style={[styles.listIconWrapper, { backgroundColor: bgColor }]}>
+                      <Text style={styles.listIcon}>{cat.icon}</Text>
+                    </View>
+                    <View style={styles.listBody}>
+                      <View style={styles.listBodyTop}>
+                        <View style={styles.listTitleWrapper}>
+                          <Text style={styles.listTitle} numberOfLines={1}>{cat.name}</Text>
+                          {budget && (
+                            <View style={styles.budgetPill}>
+                              <Text style={styles.budgetPillText}>BUDGETED</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.listAmount}>{formatCurrency(cat.total, currency)}</Text>
+                      </View>
+                      {budget && (
+                        <View style={styles.catProgressBarContainer}>
+                          <View style={[styles.catProgressBar, { width: `${Math.min(budget.percentage, 100)}%` }]} />
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  {!isLast && <View style={styles.listDivider} />}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
       </ScrollView>
     </ScreenWrapper>
@@ -170,21 +203,15 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: { padding: spacing.xl, paddingBottom: 40 },
+  scrollContainer: { 
+    padding: spacing.xl,
+    paddingBottom: spacing['4xl'],
+  },
   headerTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  greeting: {
-    ...typography.title2,
-    color: colors.textPrimary,
-  },
-  monthLabel: {
-    ...typography.subhead,
-    color: colors.textSecondary,
-    marginTop: 2,
+    justifyContent: 'center',
+    marginBottom: spacing['2xl'],
+    marginTop: spacing.md,
   },
   mainCard: {
     backgroundColor: colors.surface,
@@ -193,20 +220,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing['2xl'],
     ...shadows.md,
   },
+  spendingHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   mainCardLabel: {
     ...typography.subhead,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    fontWeight: '600',
   },
   mainAmount: {
     ...typography.largeTitle,
+    fontWeight: '800',
     color: colors.textPrimary,
     marginBottom: spacing.lg,
   },
   budgetRow: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
   },
   budgetLabels: {
     flexDirection: 'row',
@@ -217,9 +249,11 @@ const styles = StyleSheet.create({
   budgetLabel: {
     ...typography.caption1,
     color: colors.textSecondary,
+    fontWeight: '600',
   },
   budgetValue: {
     ...typography.headline,
+    fontWeight: '800',
     color: colors.textPrimary,
   },
   progressBarContainer: {
@@ -235,7 +269,7 @@ const styles = StyleSheet.create({
   },
   budgetPercentage: {
     ...typography.caption2,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'right',
   },
   setBudgetBtn: {
@@ -250,91 +284,106 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '500',
   },
-  section: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: radius.xl,
-    marginBottom: spacing['2xl'],
-    ...shadows.sm,
-  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   sectionTitle: {
-    ...typography.title3,
+    ...typography.headline,
     color: colors.textPrimary,
+    fontWeight: '700',
   },
   seeAll: {
     ...typography.subhead,
-    color: colors.primary,
+    color: colors.textSecondary,
     fontWeight: '500',
   },
-  trendContainer: {
+  listCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    marginBottom: spacing['2xl'],
+    ...shadows.md,
+  },
+  listRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 80,
-    marginTop: spacing.sm,
-  },
-  trendBarWrap: {
-    alignItems: 'center',
-    width: 30,
-  },
-  trendBarBg: {
-    height: 60,
-    width: 12,
-    backgroundColor: colors.background,
-    borderRadius: radius.full,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  trendBarFill: {
-    width: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
-  },
-  trendDayLabel: {
-    ...typography.caption2,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
   },
-  catLeft: {
-    flexDirection: 'row',
+  listDivider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginLeft: 64, // 48 (icon width) + 16 (margin right)
+  },
+  listIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
-  catIcon: {
+  listIcon: {
     fontSize: 24,
   },
-  categoryName: {
-    ...typography.body,
-    color: colors.textPrimary,
+  listBody: {
+    flex: 1,
+    justifyContent: 'center',
   },
-  categoryTotal: {
-    ...typography.headline,
+  listBodyTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  listTitleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+  listTitle: {
+    ...typography.body,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  emptyText: {
-    color: colors.textMuted,
-    fontStyle: 'italic',
-    paddingVertical: spacing.sm,
+  listSubtitle: {
+    ...typography.caption1,
+    color: colors.textSecondary,
   },
-  actions: {
-    marginBottom: spacing['3xl'],
+  listAmount: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
-  addButton: {
+  budgetPill: {
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: spacing.sm,
+  },
+  budgetPillText: {
+    ...typography.caption2,
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 10,
+    textTransform: 'uppercase',
+  },
+  catProgressBarContainer: {
+    height: 6, // Slightly thicker like the wireframe
+    backgroundColor: colors.borderLight,
+    borderRadius: 3,
     width: '100%',
+    overflow: 'hidden',
+    marginTop: 2,
+  },
+  catProgressBar: {
+    height: '100%',
+    backgroundColor: colors.warning,
+    borderRadius: 3,
   },
 });

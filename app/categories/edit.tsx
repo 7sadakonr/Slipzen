@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   dangerZone: { backgroundColor: '#FF3B3015', padding: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: '#FF3B3030' },
   dangerTitle: { ...typography.title3, color: colors.danger, marginBottom: spacing.sm },
   dangerText: { ...typography.subhead, color: colors.textSecondary, marginBottom: spacing.lg },
-  deleteButton: { backgroundColor: colors.danger },
+  deleteButton: { },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, maxHeight: '80%' },
