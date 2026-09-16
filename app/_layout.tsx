@@ -62,6 +62,17 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="expense" options={{ headerShown: false }} />
             <Stack.Screen name="scan" options={{ presentation: 'modal' }} />
+            <Stack.Screen 
+              name="add-actions" 
+              options={{ 
+                presentation: 'formSheet',
+                headerShown: false,
+                sheetGrabberVisible: true,
+                sheetCornerRadius: 20,
+                sheetAllowedDetents: [0.35],
+                sheetExpandsWhenScrolledToEdge: false,
+              }} 
+            />
           </Stack>
         </BottomSheetModalProvider>
       </QueryClientProvider>

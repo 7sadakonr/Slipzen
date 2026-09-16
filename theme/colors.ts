@@ -1,9 +1,9 @@
 export const colors = {
   // Primary
-  primary: '#777AFF',
-  primaryPressed: '#5F62E6',
-  primarySoft: '#EDEDFF',
-  primaryMuted: '#777AFF26', // 15% opacity
+  primary: '#000000',
+  primaryPressed: '#333333',
+  primarySoft: '#E5E5EA',
+  primaryMuted: '#00000026', // 15% opacity
 
   // Backgrounds
   background: '#F2F2F7',
@@ -25,11 +25,11 @@ export const colors = {
   danger: '#FF3B30',
 
   // Glass
-  glassTint: 'rgba(119, 122, 255, 0.08)',
+  glassTint: 'rgba(0, 0, 0, 0.08)',
 
   // AI accent
-  aiAccent: '#777AFF',
-  aiSoft: '#F0EEFF',
+  aiAccent: '#000000',
+  aiSoft: '#E5E5EA',
 } as const;
 
 export type ColorToken = keyof typeof colors;

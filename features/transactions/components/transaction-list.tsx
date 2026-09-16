@@ -65,6 +65,7 @@ export function TransactionList({ filters }: { filters?: TransactionFilters }) {
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => <TransactionCard transaction={item} />}
       contentContainerStyle={styles.listContent}
+      contentInsetAdjustmentBehavior="automatic"
       onEndReached={() => {
         if (hasNextPage) {
           fetchNextPage();
@@ -84,7 +85,6 @@ export function TransactionList({ filters }: { filters?: TransactionFilters }) {
 
 const styles = StyleSheet.create({
   listContent: {
-    paddingBottom: 40,
     paddingHorizontal: spacing.lg,
   },
   skeletonContainer: {

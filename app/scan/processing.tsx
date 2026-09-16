@@ -18,6 +18,7 @@ import { resolveCategory } from '../../features/categories/hooks/use-resolve-cat
 import { queryClient } from '../../lib/query-client';
 import { colors, typography, spacing, radius } from '../../theme';
 import { ErrorView } from '../../components/feedback/error-view';
+import { Button } from '../../components/ui/button';
 
 const STEPS = [
   { text: 'Uploading secure receipt...', icon: 'cloud-upload-outline' },
@@ -52,7 +53,7 @@ export default function ProcessingScreen() {
     const stepDuration = 2500; // 2.5s per step
     progress.value = withTiming(20, { duration: 500 });
     
-    const timers: NodeJS.Timeout[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
     
     timers.push(setTimeout(() => {
       setCurrentStep(1);
@@ -160,9 +161,12 @@ export default function ProcessingScreen() {
       </View>
       
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.replace('/')}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+        <Button 
+          title="Cancel" 
+          variant="secondary" 
+          onPress={() => router.replace('/')} 
+          style={{ minWidth: 120 }}
+        />
       </View>
     </View>
   );

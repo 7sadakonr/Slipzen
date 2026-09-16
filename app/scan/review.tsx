@@ -186,9 +186,12 @@ export default function ReviewScreen() {
                 <Text style={styles.resolvedName}>
                   {resolvedCategory.isNew ? `🆕 ${resolvedCategory.categoryName}` : resolvedCategory.categoryName}
                 </Text>
-                <TouchableOpacity onPress={() => setShowCategoryPicker(true)}>
-                  <Text style={styles.changeBtn}>Change</Text>
-                </TouchableOpacity>
+                <Button 
+                  title="Change" 
+                  variant="secondary" 
+                  size="sm"
+                  onPress={() => setShowCategoryPicker(true)} 
+                />
               </View>
               <Text style={[styles.resolvedLabel, { color: getBadgeColor(resolvedCategory.source) }]}>
                 {resolvedCategory.label}
