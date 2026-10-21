@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../ui/button';
-import { colors, spacing, typography } from '../../theme';
+import { spacing, typography, makeStyles, useTheme } from '../../theme';
 
 interface ErrorViewProps {
   message: string;
@@ -11,6 +11,8 @@ interface ErrorViewProps {
 }
 
 export function ErrorView({ message, onRetry, onAlternative }: ErrorViewProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       <Ionicons name="alert-circle-outline" size={64} color={colors.danger} style={styles.icon} />
@@ -34,7 +36,7 @@ export function ErrorView({ message, onRetry, onAlternative }: ErrorViewProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -64,4 +66,4 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
   }
-});
+}));

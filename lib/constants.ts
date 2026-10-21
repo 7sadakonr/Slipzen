@@ -1,5 +1,5 @@
 export const CONSTANTS = {
-  APP_NAME: 'Spendly AI',
+  APP_NAME: 'Slipzen',
   SUPPORTED_CURRENCIES: ['THB', 'USD', 'EUR', 'GBP', 'JPY'],
   DEFAULT_CURRENCY: 'THB',
   DEFAULT_LOCALE: 'th-TH',

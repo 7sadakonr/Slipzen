@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, TextProps, StyleSheet } from 'react-native';
-import { typography, colors } from '../../theme';
+import { typography, makeStyles } from '../../theme';
 
 interface AmountTextProps extends TextProps {
   amount: number;
@@ -8,6 +8,7 @@ interface AmountTextProps extends TextProps {
 }
 
 export function AmountText({ amount, showCurrency = true, style, ...props }: AmountTextProps) {
+  const styles = useStyles();
   const formatted = amount.toLocaleString('th-TH', { 
     minimumFractionDigits: 0, 
     maximumFractionDigits: 2 
@@ -23,9 +24,9 @@ export function AmountText({ amount, showCurrency = true, style, ...props }: Amo
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   text: {
     ...typography.amount,
     color: colors.textPrimary,
   },
-});
+}));

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { useCategories } from '../hooks/use-categories';
-import { colors, spacing, typography, radius } from '../../../theme';
+import { spacing, typography, radius, makeStyles, useTheme } from '../../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 interface CategoryPickerProps {
@@ -11,6 +11,8 @@ interface CategoryPickerProps {
 }
 
 export function CategoryPicker({ value, onChange, error }: CategoryPickerProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { data: categories, isLoading } = useCategories();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -56,7 +58,7 @@ export function CategoryPicker({ value, onChange, error }: CategoryPickerProps) 
                 </View>
                 <Text style={styles.categoryName}>{item.name}</Text>
                 {item.id === value && (
-                  <Ionicons name="checkmark" size={20} color={colors.primary} style={{ marginLeft: 'auto' }} />
+                  <Ionicons name="checkmark" size={20} color={colors.textPrimary} style={{ marginLeft: 'auto' }} />
                 )}
               </TouchableOpacity>
             )}
@@ -67,7 +69,7 @@ export function CategoryPicker({ value, onChange, error }: CategoryPickerProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     marginBottom: spacing.md,
   },
@@ -80,12 +82,12 @@ const styles = StyleSheet.create({
   },
   pickerButton: {
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
     borderRadius: radius.md,
-    height: 48,
+    height: 52,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   pickerError: {
     borderColor: colors.danger,
@@ -131,8 +133,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background,
+    borderRadius: 12,
+    backgroundColor: colors.fill,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -144,4 +146,4 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
   }
-});
+}));

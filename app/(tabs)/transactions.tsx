@@ -1,31 +1,34 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { ScreenWrapper } from '../../components/layout/screen-wrapper';
 import { TransactionList } from '../../features/transactions/components/transaction-list';
 import { TransactionFilters } from '../../features/transactions/components/transaction-filters';
-import { MonthPicker } from '../../components/ui/month-picker';
-import { colors, spacing } from '../../theme';
+import { MonthPicker, Appbar, BlurHeader } from '../../components/ui';
+import { spacing, makeStyles } from '../../theme';
 
 export default function TransactionsScreen() {
+  const styles = useStyles();
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState(new Date());
+  const [headerH, setHeaderH] = useState(260);
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
+      <BlurHeader onHeight={setHeaderH}>
+        <Appbar title="History" />
         <View style={styles.header}>
           <MonthPicker currentDate={filterDate} onChange={setFilterDate} />
         </View>
-
-        <TransactionFilters 
+        <TransactionFilters
           search={search}
           onSearchChange={setSearch}
           categoryId={categoryId}
           onCategoryChange={setCategoryId}
         />
-        
-        <TransactionList filters={{ 
+      </BlurHeader>
+      <View style={styles.container}>
+        <TransactionList topInset={headerH} filters={{ 
           search, 
           categoryId,
           year: filterDate.getFullYear(),
@@ -36,12 +39,11 @@ export default function TransactionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
-    paddingTop: spacing.md,
+    paddingTop: spacing.xs,
   }
-});
+}));

@@ -9,10 +9,14 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { CategoryPicker } from '../../features/categories/components/category-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassView } from 'expo-glass-effect';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
+import { Glass } from '../../components/ui/glass';
+import { DateField } from '../../components/ui/date-field';
+import { ChipSelect, PAYMENT_METHODS } from '../../components/ui/chip-select';
+import { typography, spacing, radius, makeStyles, useTheme } from '../../theme';
 
 export default function ExpenseDetailScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   
@@ -25,6 +29,7 @@ export default function ExpenseDetailScreen() {
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [date, setDate] = useState<Date>(new Date());
   const [note, setNote] = useState('');
   const [imageLoading, setImageLoading] = useState(true);
 
@@ -35,6 +40,7 @@ export default function ExpenseDetailScreen() {
       setAmount(transaction.amount.toString());
       setCategoryId(transaction.category_id);
       setPaymentMethod(transaction.payment_method || '');
+      setDate(new Date(transaction.transaction_date));
       setNote(transaction.note || '');
     }
   }, [transaction, isEditing]);
@@ -42,7 +48,7 @@ export default function ExpenseDetailScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.textSecondary} />
       </View>
     );
   }
@@ -88,6 +94,7 @@ export default function ExpenseDetailScreen() {
         amount: parseFloat(amount),
         categoryId: categoryId!,
         paymentMethod,
+        transactionDate: date,
         note,
       },
       {
@@ -107,24 +114,25 @@ export default function ExpenseDetailScreen() {
   if (isEditing) {
     return (
       <KeyboardAvoidingView 
-        style={{flex: 1, backgroundColor: colors.surface}}
+        style={{flex: 1, backgroundColor: colors.background}}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.editHeader}>
-            <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={styles.iconBtnGlass}>
-              <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.iconBtnInner}>
-                <Ionicons name="close" size={24} color={colors.primary} />
+            <Glass isInteractive style={styles.iconBtnGlass}>
+              <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.iconBtnInner} accessibilityRole="button" accessibilityLabel="Cancel editing">
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
-            </GlassView>
+            </Glass>
             <Text style={styles.editTitle}>Edit Expense</Text>
             <View style={{width: 28}} />
           </View>
 
           <Input label="Merchant" value={merchant} onChangeText={setMerchant} />
-          <Input label="Amount (THB)" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+          <Input label={`Amount (${transaction.currency || 'THB'})`} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
           <CategoryPicker value={categoryId} onChange={setCategoryId} />
-          <Input label="Payment Method" value={paymentMethod} onChangeText={setPaymentMethod} />
+          <DateField label="Date" value={date} onChange={setDate} />
+          <ChipSelect label="Paid with" options={PAYMENT_METHODS} value={paymentMethod} onChange={setPaymentMethod} />
           <Input label="Note" value={note} onChangeText={setNote} multiline style={{height: 60}} />
 
           <Button 
@@ -133,6 +141,7 @@ export default function ExpenseDetailScreen() {
             loading={updateMutation.isPending}
             style={{marginTop: spacing['2xl']}}
           />
+          <Button title="Cancel" variant="secondary" onPress={() => setIsEditing(false)} style={{marginTop: spacing.md}} />
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -140,46 +149,27 @@ export default function ExpenseDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.topActions}>
-        <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={styles.iconBtnGlass}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtnInner}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-        </GlassView>
-        <View style={styles.rightActions}>
-          <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={[styles.iconBtnGlass, {marginRight: 12}]}>
-            <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.iconBtnInner}>
-              <Ionicons name="pencil" size={20} color={colors.primary} />
-            </TouchableOpacity>
-          </GlassView>
-          <GlassView isInteractive glassEffectStyle="regular" tintColor={colors.surface} style={styles.iconBtnGlass}>
-            <TouchableOpacity onPress={handleDelete} style={styles.iconBtnInner}>
-              <Ionicons name="trash" size={20} color={colors.danger} />
-            </TouchableOpacity>
-          </GlassView>
-        </View>
-      </View>
-
       <View style={styles.header}>
         <Text style={styles.amount}>฿{displayAmount}</Text>
         <Text style={styles.merchant}>{transaction.merchant}</Text>
         <Text style={styles.date}>{format(new Date(transaction.transaction_date), 'dd MMMM yyyy, HH:mm')}</Text>
         {transaction.source === 'receipt_ai' && (
           <View style={styles.aiBadge}>
-            <Text style={styles.aiBadgeText}>✨ Scanned by AI</Text>
+            <Ionicons name="sparkles-outline" size={12} color={colors.textSecondary} />
+            <Text style={styles.aiBadgeText}>Scanned by AI</Text>
           </View>
         )}
       </View>
 
-      <View style={styles.section}>
+      <TouchableOpacity style={styles.section} activeOpacity={0.7} onPress={() => setIsEditing(true)} accessibilityRole="button" accessibilityLabel="Change category">
         <Text style={styles.label}>Category</Text>
-        <Text style={styles.value}>{categoryIcon} {categoryName}</Text>
-      </View>
+        <Text style={styles.value}>{transaction.categories?.icon ? `${categoryIcon}  ` : ''}{categoryName}</Text>
+      </TouchableOpacity>
 
       {transaction.payment_method && (
         <View style={styles.section}>
           <Text style={styles.label}>Payment Method</Text>
-          <Text style={styles.value}>{transaction.payment_method}</Text>
+          <Text style={styles.value}>{PAYMENT_METHODS.find((o) => o.value === transaction.payment_method)?.label ?? transaction.payment_method}</Text>
         </View>
       )}
 
@@ -212,7 +202,7 @@ export default function ExpenseDetailScreen() {
           <View style={styles.imageContainer}>
             {imageLoading && (
               <View style={styles.imageLoader}>
-                <ActivityIndicator color={colors.primary} />
+                <ActivityIndicator color={colors.textSecondary} />
               </View>
             )}
             <Image 
@@ -225,34 +215,40 @@ export default function ExpenseDetailScreen() {
           </View>
         </View>
       )}
+
+      <View style={styles.actions}>
+        <Button title="Edit expense" variant="secondary" onPress={() => setIsEditing(true)} />
+        <Button title="Delete expense" variant="danger" onPress={handleDelete} loading={deleteMutation.isPending} />
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
+  actions: { gap: spacing.md, marginTop: spacing.lg },
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing['2xl'], paddingBottom: 48 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { color: colors.danger, ...typography.body },
-  topActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing['2xl'], marginTop: spacing['2xl'] },
+  topActions: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: spacing['2xl'], marginTop: spacing['2xl'] },
   rightActions: { flexDirection: 'row' },
-  iconBtnGlass: { borderRadius: 20, overflow: 'hidden' },
-  iconBtnInner: { padding: spacing.sm, justifyContent: 'center', alignItems: 'center' },
+  iconBtnGlass: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
+  iconBtnInner: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   editHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing['2xl'], marginTop: spacing['2xl'] },
   editTitle: { ...typography.title3, color: colors.textPrimary },
   header: { alignItems: 'center', marginBottom: spacing['3xl'] },
-  amount: { ...typography.largeTitle, color: colors.textPrimary, marginBottom: spacing.xs },
+  amount: { ...typography.amount, fontSize: 44, color: colors.textPrimary, marginBottom: spacing.xs },
   merchant: { ...typography.title3, color: colors.textSecondary, marginBottom: 4 },
   date: { ...typography.caption1, color: colors.textMuted, marginBottom: spacing.sm },
-  aiBadge: { backgroundColor: colors.primarySoft, paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.full },
-  aiBadgeText: { color: colors.primary, ...typography.caption1, fontWeight: '600' },
-  section: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, marginBottom: spacing.lg, ...shadows.sm },
+  aiBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.fill, paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.full },
+  aiBadgeText: { color: colors.textSecondary, ...typography.caption1, fontWeight: '600' },
+  section: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.xl, marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.borderLight },
   label: { ...typography.caption2, color: colors.textMuted, marginBottom: 4, textTransform: 'uppercase', fontWeight: '600' },
   value: { ...typography.body, color: colors.textPrimary },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   itemName: { flex: 1, ...typography.subhead, color: colors.textPrimary },
   itemPrice: { ...typography.subhead, fontWeight: '500', color: colors.textPrimary },
   imageContainer: { position: 'relative', marginTop: spacing.sm },
-  imageLoader: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', borderRadius: radius.md, zIndex: 1, height: 400 },
-  receiptImage: { width: '100%', height: 400, borderRadius: radius.md, backgroundColor: '#000' }
-});
+  imageLoader: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.fill, borderRadius: radius.md, zIndex: 1, height: 400 },
+  receiptImage: { width: '100%', height: 400, borderRadius: radius.md, backgroundColor: colors.fill }
+}));

@@ -72,8 +72,10 @@ serve(async (req) => {
       .map(([name, amount]) => ({ name, amount }));
 
     // Prepare Summary Data for AI
-    const currStats = currentSummary?.[0] || {};
-    const prevStats = prevSummary?.[0] || {};
+    // get_analytics_summary returns a single JSON object (not an array of rows)
+    const firstRow = (v: any) => (Array.isArray(v) ? v[0] : v) || {};
+    const currStats = firstRow(currentSummary);
+    const prevStats = firstRow(prevSummary);
 
     const summaryData = {
       current_month_total: Number(currStats.total_spending) || 0,
@@ -105,7 +107,7 @@ Data:
 - Top Categories: ${summaryData.top_categories.map(c => `${c.name} (${c.amount} THB)`).join(', ')}
 `;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
     
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',

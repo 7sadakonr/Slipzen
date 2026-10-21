@@ -5,9 +5,11 @@ import { useRouter } from 'expo-router';
 import { Swipeable, TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useDeleteTransaction } from '../hooks/use-delete-transaction';
-import { colors } from '../../../theme';
+import { makeStyles, useTheme } from '../../../theme';
 
 export function TransactionCard({ transaction, onPress }: any) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
   const deleteMutation = useDeleteTransaction();
   const swipeableRef = useRef<Swipeable>(null);
@@ -84,10 +86,15 @@ export function TransactionCard({ transaction, onPress }: any) {
             </View>
             
             <View style={styles.footer}>
-              <Text style={styles.category}>{categoryName}</Text>
-              <Text style={styles.date}>
-                {transaction.source === 'receipt_ai' ? '✨ ' : '✏️ '}{date}
-              </Text>
+              <Text style={styles.category} numberOfLines={1}>{categoryName}</Text>
+              <View style={styles.dateRow}>
+                <Ionicons
+                  name={transaction.source === 'receipt_ai' ? 'sparkles-outline' : 'create-outline'}
+                  size={12}
+                  color={colors.textMuted}
+                />
+                <Text style={styles.date}>{date}</Text>
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -96,7 +103,7 @@ export function TransactionCard({ transaction, onPress }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   swipeWrapper: {
     backgroundColor: colors.danger, // This prevents the transparent background when swiping
   },
@@ -105,10 +112,11 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 16,
+    backgroundColor: colors.surface,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f2f2f7',
+    borderBottomColor: colors.borderLight,
     alignItems: 'center',
   },
   deleteAction: {
@@ -118,16 +126,16 @@ const styles = StyleSheet.create({
     width: 80,
     height: '100%',
     borderBottomWidth: 1,
-    borderBottomColor: '#f2f2f7',
+    borderBottomColor: colors.borderLight,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F2F2F7',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.fill,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   icon: {
     fontSize: 24,
@@ -144,14 +152,16 @@ const styles = StyleSheet.create({
   merchant: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.textPrimary,
     flex: 1,
     marginRight: 8,
   },
   amount: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+    color: colors.textPrimary,
+    flexShrink: 0,
   },
   footer: {
     flexDirection: 'row',
@@ -160,10 +170,18 @@ const styles = StyleSheet.create({
   },
   category: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
+    flex: 1,
+    marginRight: 8,
   },
   date: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: colors.textMuted,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
   }
-});
+}));

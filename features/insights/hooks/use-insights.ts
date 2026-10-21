@@ -29,8 +29,10 @@ export function useInsights() {
 
     if (cacheError) throw cacheError;
 
-    // 2. Check age (if < 6 hours, return it)
-    if (cached) {
+    // 2. Check age (if < 6 hours, return it). A "not enough data" result is never reused,
+    // so new transactions show up as soon as the card is opened again.
+    const notEnoughData = (cached?.summary_data?.transaction_count ?? 0) < 3;
+    if (cached && !notEnoughData) {
       const generatedAt = new Date(cached.generated_at).getTime();
       const sixHoursMs = 6 * 60 * 60 * 1000;
       if (now.getTime() - generatedAt < sixHoursMs) {
@@ -55,6 +57,15 @@ export function useInsights() {
       content: data.insights,
       summary_data: data.summary_data,
     };
+
+    // Too few transactions: show the message but don't cache it
+    if ((data.summary_data?.transaction_count ?? 0) < 3) {
+      return {
+        id: 'pending',
+        ...newInsight,
+        generated_at: new Date().toISOString(),
+      } as InsightData;
+    }
 
     // 4. Update DB (Upsert)
     const { data: savedInsight, error: saveError } = await supabase

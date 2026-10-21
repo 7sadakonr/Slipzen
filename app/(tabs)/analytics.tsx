@@ -1,53 +1,74 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { ScreenWrapper } from '../../components/layout/screen-wrapper';
 import { useAnalytics, DateRange } from '../../features/analytics/hooks/use-analytics';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import { spacing, typography, radius, makeStyles, useTheme } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
-import { AmountText } from '../../components/ui/amount-text';
-import { Skeleton } from '../../components/ui/skeleton';
+import { useRouter } from 'expo-router';
+import { ErrorView } from '../../components/feedback/error-view';
+import { EmptyState } from '../../components/feedback/empty-state';
+import { AmountText, Skeleton, Appbar, Badge, BlurHeader } from '../../components/ui';
 
 const RANGES: DateRange[] = ['7D', '30D', 'This Month', 'Last Month'];
+const RANGE_LABELS: Record<DateRange, string> = {
+  '7D': '7 days',
+  '30D': '30 days',
+  'This Month': 'This month',
+  'Last Month': 'Last month',
+};
 
 export default function AnalyticsScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const [headerH, setHeaderH] = useState(130);
   const [selectedRange, setSelectedRange] = useState<DateRange>('30D');
-  const { data, isLoading, isError } = useAnalytics(selectedRange);
+  const { data, isLoading, isError, refetch, isRefetching } = useAnalytics(selectedRange);
+  const pieData = (data?.pieData ?? []).map((d: any, i: number) => ({
+    ...d,
+    color: colors.chart[i % colors.chart.length],
+  }));
 
   const renderTrendBadge = (percentChange: number) => {
     if (percentChange === 0) return null;
     const isIncrease = percentChange > 0;
-    const color = isIncrease ? colors.danger : colors.success;
-    const icon = isIncrease ? 'trending-up' : 'trending-down';
     return (
-      <View style={[styles.trendBadge, { backgroundColor: color + '15' }]}>
-        <Ionicons name={icon} size={14} color={color} />
-        <Text style={[styles.trendText, { color }]}>
-          {Math.abs(percentChange).toFixed(1)}%
-        </Text>
-      </View>
+      <Badge
+        content={`${isIncrease ? '↑' : '↓'} ${Math.abs(percentChange).toFixed(1)}%`}
+        variant={isIncrease ? 'danger' : 'success'}
+        size="md"
+        style={{ marginRight: spacing.sm }}
+      />
     );
   };
 
   return (
     <ScreenWrapper>
+      <BlurHeader onHeight={setHeaderH}>
+      <Appbar title="Analytics" />
       <View style={styles.rangeSelector}>
         {RANGES.map(r => (
           <TouchableOpacity 
             key={r}
             style={[styles.rangeBtn, selectedRange === r && styles.rangeBtnActive]}
             onPress={() => setSelectedRange(r)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: selectedRange === r }}
           >
             <Text style={[styles.rangeBtnText, selectedRange === r && styles.rangeBtnTextActive]}>
-              {r}
+              {RANGE_LABELS[r]}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
+      </BlurHeader>
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContainer} 
+        contentContainerStyle={[styles.scrollContainer, { paddingTop: headerH + spacing.md }]}
+        scrollIndicatorInsets={{ top: headerH }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         contentInsetAdjustmentBehavior="automatic"
       >
         {isLoading ? (
@@ -71,13 +92,14 @@ export default function AnalyticsScreen() {
             <Skeleton height={300} width="100%" borderRadius={radius.xl} />
           </View>
         ) : isError ? (
-          <View style={styles.center}>
-            <Text style={styles.errorText}>Failed to load analytics</Text>
-          </View>
+          <ErrorView message="We couldn't load your analytics." onRetry={() => refetch()} />
         ) : (!data || data.summary.transaction_count === 0) ? (
-          <View style={{ marginTop: spacing['3xl'] }}>
-            <Text style={{ textAlign: 'center', color: colors.textSecondary }}>Not enough data for this period.</Text>
-          </View>
+          <EmptyState
+            ionicon="pie-chart-outline"
+            title="Nothing to chart yet"
+            subtitle="No expenses in this period. Try a longer range or add an expense."
+            action={{ label: 'Add expense', onPress: () => router.push('/add-actions') }}
+          />
         ) : (
           <>
             <View style={styles.summaryGrid}>
@@ -112,17 +134,17 @@ export default function AnalyticsScreen() {
                 <Text style={styles.cardTitle}>Spending by Category</Text>
                 <View style={styles.chartContainer}>
                   <PieChart
-                    data={data.pieData}
+                    data={pieData}
                     donut
-                    showText
-                    textColor={colors.surface}
-                    radius={110}
-                    innerRadius={65}
-                    textSize={16}
+                    radius={100}
+                    innerRadius={68}
+                    innerCircleColor={colors.surface}
+                    strokeWidth={2}
+                    strokeColor={colors.surface}
                   />
                 </View>
                 <View style={styles.legendContainer}>
-                  {data.pieData.map((item, idx) => (
+                  {pieData.map((item, idx) => (
                     <View key={idx} style={styles.legendItem}>
                       <View style={[styles.legendDot, { backgroundColor: item.color }]} />
                       <Text style={styles.legendText}>{item.text} {item.label}</Text>
@@ -138,7 +160,7 @@ export default function AnalyticsScreen() {
                 <Text style={styles.cardTitle}>Daily Spending</Text>
                 <View style={styles.barChartContainer}>
                   <BarChart
-                    data={data.barData}
+                    data={data.barData.map((d: any) => ({ ...d, frontColor: colors.accent }))}
                     barWidth={18}
                     spacing={12}
                     roundedTop
@@ -163,8 +185,8 @@ export default function AnalyticsScreen() {
                       <View style={styles.merchantRankBadge}>
                         <Text style={styles.merchantRankText}>{idx + 1}</Text>
                       </View>
-                      <View>
-                        <Text style={styles.merchantName}>{m.merchant}</Text>
+                      <View style={styles.merchantInfo}>
+                        <Text style={styles.merchantName} numberOfLines={1}>{m.merchant}</Text>
                         <Text style={styles.merchantVisits}>{m.count} visits</Text>
                       </View>
                     </View>
@@ -180,9 +202,10 @@ export default function AnalyticsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   scrollContainer: {
-    padding: spacing.md,
+    padding: spacing.lg,
+    paddingBottom: 120,
   },
   center: {
     padding: spacing['3xl'],
@@ -195,11 +218,11 @@ const styles = StyleSheet.create({
   },
   rangeSelector: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: 3,
+    backgroundColor: colors.fill,
+    borderRadius: radius.full,
   },
   rangeBtn: {
     flex: 1,
@@ -208,14 +231,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   rangeBtnActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.surface,
   },
   rangeBtnText: {
     ...typography.subhead,
     color: colors.textSecondary,
   },
   rangeBtnTextActive: {
-    color: colors.primary,
+    color: colors.textPrimary,
     fontWeight: '600',
   },
   summaryGrid: {
@@ -230,7 +253,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   fullWidthCard: {
     width: '100%',
@@ -257,19 +281,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.sm,
   },
-  trendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-    borderRadius: radius.sm,
-    marginRight: spacing.sm,
-  },
-  trendText: {
-    ...typography.caption1,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
   trendLabel: {
     ...typography.caption1,
     color: colors.textMuted,
@@ -279,7 +290,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.lg,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   cardTitle: {
     ...typography.title3,
@@ -307,9 +319,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 3,
     marginRight: spacing.sm,
   },
   legendText: {
@@ -318,7 +330,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   legendValue: {
-    ...typography.headline,
+    ...typography.subhead,
+    fontWeight: '600',
     color: colors.textPrimary,
   },
   merchantRow: {
@@ -332,20 +345,26 @@ const styles = StyleSheet.create({
   merchantLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  merchantInfo: {
+    flex: 1,
   },
   merchantRankBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.fill,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
+    flexShrink: 0,
   },
   merchantRankText: {
     ...typography.subhead,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.textSecondary,
   },
   merchantName: {
     ...typography.body,
@@ -361,5 +380,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '600',
     color: colors.textPrimary,
+    flexShrink: 0,
   }
-});
+}));

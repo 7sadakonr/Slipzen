@@ -1,27 +1,41 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useInsights } from '../hooks/use-insights';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
+import { spacing, typography, radius, makeStyles, useTheme } from '../../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDistanceToNow } from 'date-fns';
 
 export function InsightCard() {
-  const { data, isLoading, isError, refresh, isRefreshing } = useInsights();
+  const styles = useStyles();
+  const { colors } = useTheme();
+  const { data, isLoading, isError, refetch, refresh, isRefreshing } = useInsights();
 
   if (isLoading) {
     return (
       <View style={[styles.card, styles.center]}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.textSecondary} />
         <Text style={styles.loadingText}>Analyzing spending patterns...</Text>
       </View>
     );
   }
 
-  if (isError || !data || data.content.length === 0) {
+  if (isError) {
+    return (
+      <View style={[styles.card, styles.center]}>
+        <Ionicons name="cloud-offline-outline" size={24} color={colors.textMuted} />
+        <Text style={styles.emptyText}>Couldn't load your insight right now.</Text>
+        <TouchableOpacity onPress={() => refetch()} accessibilityRole="button" accessibilityLabel="Try loading the insight again">
+          <Text style={styles.retryText}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!data || data.content.length === 0) {
     return (
       <View style={[styles.card, styles.center]}>
         <Ionicons name="sparkles-outline" size={24} color={colors.textMuted} />
-        <Text style={styles.emptyText}>Add more transactions to get AI insights.</Text>
+        <Text style={styles.emptyText}>Add a few more expenses and AI will summarise your spending.</Text>
       </View>
     );
   }
@@ -32,14 +46,22 @@ export function InsightCard() {
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="sparkles" size={18} color={colors.warning} />
-          <Text style={styles.title}>AI Insight</Text>
+          <Ionicons name="sparkles" size={18} color={colors.accent} />
+          <Text style={styles.title}>Insight</Text>
         </View>
-        <TouchableOpacity onPress={() => refresh()} disabled={isRefreshing}>
-          <Ionicons name="refresh" size={18} color={isRefreshing ? colors.textMuted : colors.primary} />
+        <TouchableOpacity
+          onPress={() => refresh()}
+          disabled={isRefreshing}
+          style={styles.refreshBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Refresh insight"
+        >
+          <Ionicons name="refresh" size={16} color={isRefreshing ? colors.textMuted : colors.textSecondary} />
+          <Text style={[styles.refreshText, isRefreshing && { color: colors.textMuted }]}>{isRefreshing ? 'Updating…' : 'Refresh'}</Text>
         </TouchableOpacity>
       </View>
 
+      <Text style={styles.subtitle}>AI summary of your recent spending</Text>
       <View style={styles.content}>
         {data.content.map((insight: string, idx: number) => (
           <View key={idx} style={styles.insightRow}>
@@ -58,13 +80,14 @@ export function InsightCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    ...shadows.sm,
+    padding: spacing.xl,
+    marginBottom: spacing['2xl'],
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   center: {
     alignItems: 'center',
@@ -93,9 +116,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   title: {
-    ...typography.headline,
-    color: colors.textPrimary,
+    ...typography.footnote,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
+  retryText: { ...typography.subhead, color: colors.textPrimary, fontWeight: '600', marginTop: spacing.sm },
+  refreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  refreshText: { ...typography.footnote, color: colors.textSecondary, fontWeight: '600' },
+  subtitle: { ...typography.footnote, color: colors.textMuted, marginBottom: spacing.md },
   content: {
     gap: spacing.sm,
   },
@@ -106,8 +136,7 @@ const styles = StyleSheet.create({
   },
   bullet: {
     ...typography.body,
-    color: colors.primary,
-    fontWeight: 'bold',
+    color: colors.textMuted,
   },
   insightText: {
     ...typography.body,
@@ -125,4 +154,4 @@ const styles = StyleSheet.create({
     ...typography.caption2,
     color: colors.textMuted,
   },
-});
+}));

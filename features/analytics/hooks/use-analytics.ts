@@ -80,7 +80,7 @@ export function useAnalytics(range: DateRange = '30D') {
       const dateMap: Record<string, number> = {};
       const merchantMap: Record<string, { total: number, count: number }> = {};
       
-      const colors = ['#777AFF', '#FF9F0A', '#32ADE6', '#34C759', '#FF3B30', '#AF52DE', '#FF9500', '#5856D6'];
+      const colors = ['#0A0A0A', '#27272A', '#52525B', '#71717A', '#A1A1AA', '#D4D4D8', '#3F3F46', '#8A8A93'];
 
       (data || []).forEach(tx => {
         const amt = parseFloat(tx.amount);
@@ -113,7 +113,7 @@ export function useAnalytics(range: DateRange = '30D') {
         .map(([key, val]) => ({
           value: val,
           label: key.substring(8, 10),
-          frontColor: '#777AFF', // Design token color
+          frontColor: '#0A0A0A', // Design token color
         }));
 
       const topMerchants = Object.entries(merchantMap)

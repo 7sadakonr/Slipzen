@@ -2,14 +2,17 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCategories } from '../../features/categories/hooks/use-categories';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import { spacing, typography, radius, makeStyles, useTheme } from '../../theme';
 import { ScreenWrapper } from '../../components/layout/screen-wrapper';
 import { Skeleton } from '../../components/ui/skeleton';
 import { ErrorView } from '../../components/feedback/error-view';
 import { EmptyState } from '../../components/feedback/empty-state';
-import { GlassView } from 'expo-glass-effect';
+import { Glass } from '../../components/ui/glass';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CategoriesScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
   const { data: categories, isLoading, error } = useCategories();
 
@@ -20,7 +23,7 @@ export default function CategoriesScreen() {
           {[1, 2, 3, 4, 5, 6].map(i => (
             <View key={i} style={styles.card}>
               <View style={styles.cardLeft}>
-                <Skeleton width={48} height={48} borderRadius={24} />
+                <Skeleton width={44} height={44} borderRadius={14} />
                 <View style={{ gap: 6 }}>
                   <Skeleton width={120} height={16} />
                   <Skeleton width={80} height={12} />
@@ -57,7 +60,11 @@ export default function CategoriesScreen() {
       >
         <View style={styles.cardLeft}>
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>{item.icon || '🏷️'}</Text>
+            {item.icon ? (
+              <Text style={styles.icon}>{item.icon}</Text>
+            ) : (
+              <Ionicons name="pricetag-outline" size={20} color={colors.textSecondary} />
+            )}
           </View>
           <View style={styles.details}>
             <Text style={styles.name}>{item.name}</Text>
@@ -70,10 +77,10 @@ export default function CategoriesScreen() {
         <View style={styles.cardRight}>
           {item.ai_generated && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>✨ AI</Text>
+              <Text style={styles.badgeText}>AI</Text>
             </View>
           )}
-          <Text style={styles.arrow}>→</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </View>
       </TouchableOpacity>
     );
@@ -91,26 +98,30 @@ export default function CategoriesScreen() {
             <EmptyState 
               ionicon="pricetags-outline" 
               title="No Categories" 
-              subtitle="Create your first category." 
+              subtitle="Create your first category."
+              action={{ label: 'Add category', onPress: () => router.push('/categories/edit') }}
             />
           </View>
         }
       />
 
-      <GlassView isInteractive tintColor="rgba(0, 0, 0, 0.9)" style={styles.fabGlass}>
+      <Glass isInteractive tintColor={colors.primary} style={styles.fabGlass}>
         <TouchableOpacity 
           style={styles.fabTouchable}
           activeOpacity={0.7}
-          onPress={() => router.push('/categories/add')}
+          accessibilityRole="button"
+          accessibilityLabel="Add category"
+          onPress={() => router.push('/categories/edit')}
         >
-          <Text style={styles.fabIcon}>+</Text>
+          <Ionicons name="add" size={22} color={colors.onPrimary} />
+          <Text style={styles.fabLabel}>Add category</Text>
         </TouchableOpacity>
-      </GlassView>
+      </Glass>
     </ScreenWrapper>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   list: {
     padding: spacing.lg,
     gap: spacing.md,
@@ -127,8 +138,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: radius.lg,
-    ...shadows.sm,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   cardLeft: {
     flexDirection: 'row',
@@ -136,15 +148,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.fill,
     justifyContent: 'center',
     alignItems: 'center',
   },
   icon: {
-    fontSize: 24,
+    fontSize: 22,
   },
   details: {
     justifyContent: 'center',
@@ -195,12 +207,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: spacing['3xl'],
     right: spacing['2xl'],
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
   },
+  fabLabel: { ...typography.headline, color: colors.onPrimary },
   fabTouchable: {
     flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -210,4 +226,4 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     marginTop: -2,
   },
-});
+}));

@@ -10,6 +10,7 @@ export interface UpdateTransactionParams {
   categoryId: string;
   note?: string;
   paymentMethod?: string;
+  transactionDate?: Date;
 }
 
 export function useUpdateTransaction() {
@@ -23,6 +24,7 @@ export function useUpdateTransaction() {
           category_id: params.categoryId,
           note: params.note || null,
           payment_method: params.paymentMethod || null,
+          ...(params.transactionDate ? { transaction_date: params.transactionDate.toISOString() } : {}),
         })
         .eq('id', params.id);
         
@@ -36,7 +38,7 @@ export function useUpdateTransaction() {
       queryClient.invalidateQueries({ queryKey: ['budgets'] });
       queryClient.invalidateQueries({ queryKey: ['budget-status'] });
 
-      const d = new Date();
+      const d = variables.transactionDate ?? new Date();
       supabase.auth.getUser().then(({ data: { user } }) => {
         if (user) {
           checkAndTriggerBudgetAlerts(user.id, d.getMonth() + 1, d.getFullYear());

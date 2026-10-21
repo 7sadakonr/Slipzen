@@ -7,7 +7,7 @@ export function useCreateTransaction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: ManualExpenseInput) => {
+    mutationFn: async (data: ManualExpenseInput & { currency?: string }) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Not logged in');
 
@@ -21,7 +21,7 @@ export function useCreateTransaction() {
           transaction_date: data.transactionDate.toISOString(),
           note: data.note,
           source: 'manual',
-          currency: 'THB',
+          currency: data.currency ?? 'THB',
         })
         .select()
         .single();

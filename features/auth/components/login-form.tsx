@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, TextInput } from 'react-native';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { useAuth } from '../hooks/use-auth';
 import { loginSchema } from '../../../validation/auth';
+import { makeStyles } from '../../../theme';
 
 export function LoginForm() {
+  const styles = useStyles();
   const { login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const passwordRef = useRef<TextInput>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleLogin = async () => {
@@ -34,7 +37,11 @@ export function LoginForm() {
     <View style={styles.container}>
       <Input
         label="Email"
-        placeholder="Enter your email"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        textContentType="emailAddress"
+        autoComplete="email"
+        placeholder="you@example.com"
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
@@ -42,15 +49,20 @@ export function LoginForm() {
         error={errors.email}
       />
       <Input
+        ref={passwordRef}
         label="Password"
-        placeholder="Enter your password"
+        returnKeyType="go"
+        onSubmitEditing={handleLogin}
+        textContentType="password"
+        placeholder="Password"
         secureTextEntry
+        secureToggle
         value={password}
         onChangeText={setPassword}
         error={errors.password}
       />
       <Button 
-        title="Login" 
+        title="Sign in" 
         onPress={handleLogin} 
         loading={isLoading} 
         style={styles.button} 
@@ -59,11 +71,11 @@ export function LoginForm() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     width: '100%',
   },
   button: {
-    marginTop: 8,
+    marginTop: 12,
   },
-});
+}));

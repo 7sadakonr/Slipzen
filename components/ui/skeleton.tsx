@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   withSequence
 } from 'react-native-reanimated';
-import { colors, radius } from '../../theme';
+import { radius, makeStyles } from '../../theme';
 
 interface SkeletonProps {
   width?: DimensionValue;
@@ -17,6 +17,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ width = '100%', height = 20, borderRadius = radius.sm, style }: SkeletonProps) {
+  const styles = useStyles();
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -46,8 +47,8 @@ export function Skeleton({ width = '100%', height = 20, borderRadius = radius.sm
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   skeleton: {
     backgroundColor: colors.borderLight, // Using theme border/muted color for shimmer
   },
-});
+}));
