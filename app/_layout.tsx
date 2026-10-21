@@ -7,6 +7,11 @@ import { Session } from '@supabase/supabase-js';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import * as Notifications from 'expo-notifications';
+import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'react-native';
+import { ThemeProvider, DefaultTheme, DarkTheme } from 'expo-router';
+import { lightColors, darkColors } from '../theme';
+import { ToastHost } from '../components/ui/toast';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,6 +28,19 @@ export default function RootLayout() {
   const [isInitialized, setIsInitialized] = useState(false);
   const segments = useSegments();
   const router = useRouter();
+  const scheme = useColorScheme();
+  const palette = scheme === 'dark' ? darkColors : lightColors;
+  const navTheme = {
+    ...(scheme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors,
+      primary: palette.primary,
+      background: palette.background,
+      card: palette.surface,
+      text: palette.textPrimary,
+      border: palette.border,
+    },
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,7 +72,9 @@ export default function RootLayout() {
   if (!isInitialized) return null; // Or a splash screen
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ThemeProvider value={navTheme}>
+    <StatusBar style="auto" />
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
       <QueryClientProvider client={queryClient}>
         <BottomSheetModalProvider>
           <Stack screenOptions={{ headerShown: false }}>
@@ -62,20 +82,34 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="expense" options={{ headerShown: false }} />
             <Stack.Screen name="scan" options={{ presentation: 'modal' }} />
+            <Stack.Screen
+              name="notifications"
+              options={{
+                headerShown: true,
+                title: 'Notifications',
+                headerBackButtonDisplayMode: 'minimal',
+                headerShadowVisible: false,
+                headerTintColor: palette.textPrimary,
+                headerStyle: { backgroundColor: palette.background },
+              }}
+            />
+            <Stack.Screen name="account" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen 
               name="add-actions" 
               options={{ 
                 presentation: 'formSheet',
                 headerShown: false,
                 sheetGrabberVisible: true,
-                sheetCornerRadius: 20,
-                sheetAllowedDetents: [0.35],
+                sheetCornerRadius: 28,
+                sheetAllowedDetents: [0.5],
                 sheetExpandsWhenScrolledToEdge: false,
               }} 
             />
           </Stack>
         </BottomSheetModalProvider>
+        <ToastHost />
       </QueryClientProvider>
     </GestureHandlerRootView>
+    </ThemeProvider>
   );
 }

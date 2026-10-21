@@ -15,7 +15,10 @@ export function useProfile() {
         .single();
 
       if (error) throw error;
-      return { ...data, email: user.email };
+      const avatar_url = data.avatar_path
+        ? supabase.storage.from('avatars').getPublicUrl(data.avatar_path).data.publicUrl
+        : null;
+      return { ...data, email: user.email, avatar_url };
     }
   });
 }

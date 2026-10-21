@@ -31,7 +31,7 @@ export async function resolveCategory(
       categoryName: (rule.categories as any)?.name || 'Unknown',
       isNew: false,
       source: 'merchant_rule',
-      label: '🏷️ Matched by your rule',
+      label: 'Matched by your rule',
     };
   }
 
@@ -47,7 +47,7 @@ export async function resolveCategory(
         categoryName: match.name,
         isNew: false,
         source: 'ai_match',
-        label: '✨ AI categorized',
+        label: 'AI categorized',
       };
     }
   }
@@ -59,7 +59,7 @@ export async function resolveCategory(
       categoryName: suggestedCategory,
       isNew: true,
       source: 'ai_new',
-      label: '🆕 New category suggested by AI',
+      label: 'New category suggested by AI',
     };
   }
 

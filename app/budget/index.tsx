@@ -6,16 +6,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../../features/auth/hooks/use-profile';
 import { useBudgetStatus } from '../../features/budgets/hooks/use-budget-status';
 import { BudgetCard } from '../../features/budgets/components/budget-card';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import { spacing, typography, radius, shadows, makeStyles, useTheme } from '../../theme';
 import { ScreenWrapper } from '../../components/layout/screen-wrapper';
 import { useAvailableMonths } from '../../features/transactions/hooks/use-available-months';
 import { startOfMonth, endOfMonth, isBefore, isAfter } from 'date-fns';
 
 import { Skeleton } from '../../components/ui/skeleton';
-import { GlassView } from 'expo-glass-effect';
+import { Glass } from '../../components/ui/glass';
 import { EmptyState } from '../../components/feedback/empty-state';
 
 export default function BudgetOverviewScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
   const { data: profile } = useProfile();
   const { data: availableMonths = [] } = useAvailableMonths();
@@ -25,7 +27,7 @@ export default function BudgetOverviewScreen() {
   const month = currentDate.getMonth() + 1;
   const year = currentDate.getFullYear();
   
-  const { data: budgets, isLoading } = useBudgetStatus(month, year);
+  const { data: budgets, isLoading, refetch, isRefetching } = useBudgetStatus(month, year);
   
   const currency = profile?.currency || 'THB';
 
@@ -71,13 +73,13 @@ export default function BudgetOverviewScreen() {
     <ScreenWrapper>
       <View style={styles.monthSelector}>
         <TouchableOpacity onPress={handlePrevMonth} style={[styles.monthBtn, !canGoPrev && { opacity: 0.3 }]} disabled={!canGoPrev}>
-          <Ionicons name="chevron-back" size={24} color={colors.primary} />
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         
         <Text style={styles.monthText}>{format(currentDate, 'MMMM yyyy')}</Text>
         
         <TouchableOpacity onPress={handleNextMonth} style={[styles.monthBtn, !canGoNext && { opacity: 0.3 }]} disabled={!canGoNext}>
-          <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+          <Ionicons name="chevron-forward" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -85,6 +87,8 @@ export default function BudgetOverviewScreen() {
         data={categoryBudgets}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        refreshing={isRefetching}
+        onRefresh={refetch}
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.sectionTitle}>Overall Budget</Text>
@@ -100,7 +104,7 @@ export default function BudgetOverviewScreen() {
                 onPress={() => router.push({ pathname: '/budget/set', params: { type: 'overall', month, year } })}
               >
                 <View style={styles.emptyIconContainer}>
-                  <Text style={styles.emptyIcon}>💰</Text>
+                  <Ionicons name="wallet-outline" size={28} color={colors.textPrimary} />
                 </View>
                 <Text style={styles.emptyTitle}>Set Overall Budget</Text>
                 <Text style={styles.emptySubtitle}>Track your total spending limit for the month</Text>
@@ -124,26 +128,33 @@ export default function BudgetOverviewScreen() {
             <EmptyState 
               ionicon="pie-chart-outline" 
               title="No Category Budgets" 
-              subtitle="Set limits for specific categories like Food or Transport." 
+              subtitle="Set limits for specific categories like Food or Transport."
+              action={{
+                label: 'Add category budget',
+                onPress: () => router.push({ pathname: '/budget/set', params: { type: 'category', month, year } }),
+              }}
             />
           </View>
         }
       />
 
-      <GlassView isInteractive tintColor="rgba(0, 0, 0, 0.9)" style={styles.fabGlass}>
+      <Glass isInteractive tintColor={colors.primary} style={styles.fabGlass}>
         <TouchableOpacity 
           style={styles.fabTouchable}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Add category budget"
           onPress={() => router.push({ pathname: '/budget/set', params: { type: 'category', month, year } })}
         >
-          <Text style={styles.fabIcon}>+</Text>
+          <Ionicons name="add" size={22} color={colors.onPrimary} />
+          <Text style={styles.fabLabel}>Add budget</Text>
         </TouchableOpacity>
-      </GlassView>
+      </Glass>
     </ScreenWrapper>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -155,9 +166,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
   },
   monthBtn: {
     padding: spacing.xs,
@@ -187,15 +195,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing['2xl'],
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.borderLight,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderStyle: 'dashed',
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primarySoft,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: colors.fill,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
@@ -225,19 +233,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: spacing['3xl'],
     right: spacing['2xl'],
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
   },
+  fabLabel: { ...typography.headline, color: colors.onPrimary },
   fabTouchable: {
     flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
   fabIcon: {
     fontSize: 28,
-    color: '#fff',
+    color: colors.onPrimary,
     fontWeight: '300',
     marginTop: -2,
   },
-});
+}));

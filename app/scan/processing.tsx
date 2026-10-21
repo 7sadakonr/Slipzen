@@ -11,12 +11,14 @@ import Animated, {
   FadeInDown,
   FadeOutUp
 } from 'react-native-reanimated';
+import { StepIndicator } from '../../components/ui/step-indicator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useReceiptStore } from '../../stores/receipt-store';
 import { useScanReceipt } from '../../features/receipts/hooks/use-scan-receipt';
 import { resolveCategory } from '../../features/categories/hooks/use-resolve-category';
 import { queryClient } from '../../lib/query-client';
-import { colors, typography, spacing, radius } from '../../theme';
+import { typography, spacing, radius, makeStyles, useTheme } from '../../theme';
 import { ErrorView } from '../../components/feedback/error-view';
 import { Button } from '../../components/ui/button';
 
@@ -28,6 +30,9 @@ const STEPS = [
 ];
 
 export default function ProcessingScreen() {
+  const insets = useSafeAreaInsets();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
   const { storagePath, setAiResult, setResolvedCategory } = useReceiptStore();
   const scanReceipt = useScanReceipt();
@@ -133,6 +138,9 @@ export default function ProcessingScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.stepWrap, { paddingTop: insets.top + 12 }]}>
+        <StepIndicator step={2} label="Reading your receipt" />
+      </View>
       <View style={styles.content}>
         
         <Animated.View 
@@ -141,7 +149,7 @@ export default function ProcessingScreen() {
           exiting={FadeOutUp.duration(300)}
           style={styles.iconContainer}
         >
-          <Ionicons name={CurrentIcon} size={48} color={colors.primary} />
+          <Ionicons name={CurrentIcon} size={48} color={colors.textPrimary} />
         </Animated.View>
 
         <Animated.Text 
@@ -172,7 +180,7 @@ export default function ProcessingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -183,11 +191,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing['2xl'],
   },
+  stepWrap: {
+    paddingHorizontal: spacing['2xl'],
+  },
   iconContainer: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.primarySoft,
+    borderRadius: 28,
+    backgroundColor: colors.fill,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing['2xl'],
@@ -230,4 +241,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '500',
   }
-});
+}));

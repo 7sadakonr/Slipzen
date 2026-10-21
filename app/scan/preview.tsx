@@ -3,12 +3,17 @@ import { View, StyleSheet, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useReceiptStore } from '../../stores/receipt-store';
 import { Button } from '../../components/ui/button';
+import { StepIndicator } from '../../components/ui/step-indicator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { compressImage } from '../../utils/image';
 import { useUploadReceipt } from '../../features/receipts/hooks/use-upload-receipt';
 import { supabase } from '../../lib/supabase';
+import { makeStyles } from '../../theme';
 
 export default function PreviewScreen() {
+  const styles = useStyles();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { imageUri, setImage, setStoragePath } = useReceiptStore();
   const { upload, isUploading } = useUploadReceipt();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,17 +55,23 @@ export default function PreviewScreen() {
   return (
     <View style={styles.container}>
       <Image source={{ uri: imageUri }} style={styles.image} resizeMode="contain" />
+
+      <View style={[styles.stepWrap, { top: insets.top + 12 }]}>
+        <StepIndicator step={1} label="Check your photo" onDark />
+      </View>
       
       <View style={styles.footer}>
         <Button 
           title="Retake" 
           variant="secondary" 
+          onDark
           onPress={() => router.back()} 
           style={styles.button}
           disabled={isProcessing || isUploading}
         />
         <Button 
           title="Use Photo" 
+          onDark
           onPress={handleUsePhoto} 
           loading={isProcessing || isUploading}
           style={styles.button}
@@ -70,13 +81,18 @@ export default function PreviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flex: 1,
     backgroundColor: '#000',
   },
   image: {
     flex: 1,
+  },
+  stepWrap: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
   },
   footer: {
     flexDirection: 'row',
@@ -93,4 +109,4 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 8,
   }
-});
+}));

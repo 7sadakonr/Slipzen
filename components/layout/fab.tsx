@@ -1,13 +1,15 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadows } from '../../theme';
+import { shadows, makeStyles, useTheme } from '../../theme';
 
 interface FABProps {
   onPress: () => void;
 }
 
 export function FAB({ onPress }: FABProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <TouchableOpacity
       style={styles.fab}
@@ -19,7 +21,7 @@ export function FAB({ onPress }: FABProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   fab: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 100 : 80, // rough height of tab bar + safe area
@@ -33,4 +35,4 @@ const styles = StyleSheet.create({
     ...shadows.fab,
     zIndex: 999,
   }
-});
+}));

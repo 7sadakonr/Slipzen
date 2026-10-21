@@ -1,21 +1,22 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenWrapper } from '../../components/layout/screen-wrapper';
-import { Button } from '../../components/ui/button';
+import { Skeleton, SlipzenLogo, Appbar, Avatar, Banner, Badge, Glass, ListGroup, ListRow, GraphiteCard, BlurHeader } from '../../components/ui';
 import { useDashboardStats } from '../../features/transactions/hooks/use-dashboard-stats';
 import { useBudgetStatus } from '../../features/budgets/hooks/use-budget-status';
 import { useProfile } from '../../features/auth/hooks/use-profile';
 import { format } from 'date-fns';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
+import { typography, spacing, radius, makeStyles, useTheme } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '../../utils/format';
 import { InsightCard } from '../../features/insights/components/insight-card';
-import { Skeleton } from '../../components/ui/skeleton';
 import { EmptyState } from '../../components/feedback/empty-state';
-import { SlipzenLogo } from '../../components/ui/slipzen-logo';
+import { useNotifications } from '../../features/notifications/hooks/use-notifications';
 
 export default function DashboardScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
   
   const now = new Date();
@@ -25,35 +26,99 @@ export default function DashboardScreen() {
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
   
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(year, now.getMonth());
-  const { data: budgets, isLoading: budgetsLoading } = useBudgetStatus(month, year);
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats(year, now.getMonth());
+  const { data: budgets, isLoading: budgetsLoading, refetch: refetchBudgets } = useBudgetStatus(month, year);
+  const [refreshing, setRefreshing] = useState(false);
+  const [headerH, setHeaderH] = useState(110);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchStats(), refetchBudgets()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const firstName = (profile?.display_name || '').split(' ')[0];
+  const { hasUnread } = useNotifications(month, year);
 
   const overallBudget = budgets?.find(b => b.isOverall);
 
   const isLoading = statsLoading || budgetsLoading;
 
+  const handleOpenNotifications = () => router.push('/notifications');
+
   return (
     <ScreenWrapper>
+      <BlurHeader onHeight={setHeaderH}>
+      <Appbar
+          leading={
+            <Avatar
+              name={profile?.display_name || profile?.email || 'User'}
+              imageUri={profile?.avatar_url || undefined}
+              size="sm"
+              onPress={() => router.push('/profile')}
+            />
+          }
+          title={<SlipzenLogo width={110} height={32} color={colors.textPrimary} />}
+          centerTitle
+          trailing={
+            <TouchableOpacity
+              onPress={handleOpenNotifications}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel={hasUnread ? 'Notifications, unread' : 'Notifications'}
+            >
+              <Badge variant="danger" size="sm" visible={hasUnread}>
+                <Glass isInteractive style={styles.glassCircle}>
+                  <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+                </Glass>
+              </Badge>
+            </TouchableOpacity>
+          }
+        />
+      </BlurHeader>
       <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={[styles.scrollContainer, { paddingTop: headerH + spacing.md }]}
+        scrollIndicatorInsets={{ top: headerH }}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        {/* Header Logo */}
-        <View style={styles.headerTitleRow}>
-          <SlipzenLogo width={120} height={36} color={colors.textPrimary} />
+        <View style={styles.greetingBlock}>
+          <Text style={styles.greetingText}>{greeting}{firstName ? `, ${firstName}` : ''}</Text>
+          <Text style={styles.greetingDate}>{format(now, 'EEEE, d MMMM')}</Text>
         </View>
 
+        {/* Budget Alert Banner */}
+        {!isLoading && overallBudget && overallBudget.percentage >= 80 && (
+          <Banner
+            variant={overallBudget.percentage >= 100 ? 'error' : 'warning'}
+            title={overallBudget.percentage >= 100 ? 'Budget Exceeded!' : 'Budget Warning'}
+            message={`You have used ${overallBudget.percentage}% of your monthly overall budget.`}
+            action={{ label: 'View', onPress: () => router.push('/budget') }}
+            dismissable
+            style={{ marginBottom: spacing.lg }}
+          />
+        )}
+
         {/* Primary Budget / Spending Card */}
-        <View style={styles.mainCard}>
+        <GraphiteCard style={styles.mainCard}>
           <View style={styles.spendingHeaderRow}>
-            <Text style={styles.mainCardLabel}>Total Spending</Text>
-            <Text style={styles.mainCardLabel}>This Month</Text>
+            <SlipzenLogo width={64} height={19} color="rgba(255,255,255,0.7)" />
+            <TouchableOpacity onPress={() => router.push('/budget')} accessibilityRole="button" accessibilityLabel="Open budgets">
+              <Text style={styles.mainCardLabel}>Budgets ›</Text>
+            </TouchableOpacity>
           </View>
+          <Text style={[styles.mainCardLabel, styles.totalLabel]}>Total spending · This month</Text>
 
           {isLoading ? (
              <View style={{ gap: spacing.md, marginVertical: spacing.md }}>
-               <Skeleton height={40} width="60%" />
-               <Skeleton height={20} width="100%" />
+               <Skeleton height={40} width="60%" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
+               <Skeleton height={20} width="100%" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
              </View>
           ) : (
             <Text style={styles.mainAmount}>
@@ -73,7 +138,7 @@ export default function DashboardScreen() {
                   style={[
                     styles.progressBar, 
                     { width: `${Math.min(overallBudget.percentage, 100)}%`, 
-                      backgroundColor: colors.textPrimary 
+                      backgroundColor: '#FFFFFF' 
                     }
                   ]} 
                 />
@@ -87,7 +152,34 @@ export default function DashboardScreen() {
               <Text style={styles.setBudgetBtnText}>+ Set Overall Budget</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </GraphiteCard>
+
+        {/* First-run guidance */}
+        {!isLoading && (!stats?.recentTransactions || stats.recentTransactions.length === 0) && (
+          <ListGroup title="Get started" style={{ marginBottom: spacing['2xl'] }}>
+            <ListRow
+              icon="scan-outline"
+              title="Scan your first receipt"
+              subtitle="Take a photo and AI fills in the details"
+              chevron
+              onPress={() => router.push('/scan')}
+            />
+            <ListRow
+              icon="wallet-outline"
+              title="Set a monthly budget"
+              subtitle="Get alerts before you overspend"
+              chevron
+              onPress={() => router.push('/budget')}
+            />
+            <ListRow
+              icon="pricetags-outline"
+              title="Review your categories"
+              subtitle="Rename or add your own"
+              chevron
+              onPress={() => router.push('/categories')}
+            />
+          </ListGroup>
+        )}
 
         {/* AI Insight Card */}
         <InsightCard />
@@ -109,23 +201,25 @@ export default function DashboardScreen() {
         {!isLoading && stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
           <View style={styles.listCard}>
             {stats.recentTransactions.map((tx: any, idx: number) => {
-              const bgColors = ['#FFF4E5', '#F3F0FF', '#E8F5E9', '#E3F2FD', '#FCE4EC'];
-              const bgColor = bgColors[idx % bgColors.length];
               const isLast = idx === stats.recentTransactions.length - 1;
               return (
                 <View key={idx}>
-                  <View style={styles.listRow}>
-                    <View style={[styles.listIconWrapper, { backgroundColor: bgColor }]}>
-                      <Text style={styles.listIcon}>{(tx.categories as any)?.icon || '💸'}</Text>
+                  <TouchableOpacity
+                    style={styles.listRow}
+                    activeOpacity={0.6}
+                    onPress={() => router.push(`/expense/${tx.id}`)}
+                  >
+                    <View style={styles.listIconWrapper}>
+                      <Text style={styles.listIcon}>{(tx.categories as any)?.icon || '•'}</Text>
                     </View>
                     <View style={styles.listBody}>
                       <View style={styles.listBodyTop}>
-                        <Text style={styles.listTitle} numberOfLines={1}>{tx.merchant}</Text>
+                        <Text style={[styles.listTitle, styles.recentTxTitle]} numberOfLines={1}>{tx.merchant}</Text>
                         <Text style={styles.listAmount}>{formatCurrency(parseFloat(tx.amount), currency)}</Text>
                       </View>
                       <Text style={styles.listSubtitle}>{format(new Date(tx.transaction_date), 'MMM dd, yyyy')}</Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                   {!isLast && <View style={styles.listDivider} />}
                 </View>
               );
@@ -136,7 +230,7 @@ export default function DashboardScreen() {
         {/* Top Categories */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Top Categories</Text>
-          <TouchableOpacity onPress={() => router.push('/transactions')}>
+          <TouchableOpacity onPress={() => router.push('/analytics')}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
@@ -161,14 +255,12 @@ export default function DashboardScreen() {
           <View style={styles.listCard}>
             {stats.topCategories.map((cat: any, idx: number) => {
               const budget = budgets?.find(b => !b.isOverall && b.categoryName === cat.name);
-              const bgColors = ['#FFF4E5', '#F3F0FF', '#E8F5E9', '#E3F2FD', '#FCE4EC'];
-              const bgColor = bgColors[idx % bgColors.length];
               const isLast = idx === stats.topCategories.length - 1;
               
               return (
                 <View key={idx}>
                   <View style={styles.listRow}>
-                    <View style={[styles.listIconWrapper, { backgroundColor: bgColor }]}>
+                    <View style={styles.listIconWrapper}>
                       <Text style={styles.listIcon}>{cat.icon}</Text>
                     </View>
                     <View style={styles.listBody}>
@@ -202,40 +294,55 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  scrollContainer: { 
-    padding: spacing.xl,
-    paddingBottom: spacing['4xl'],
+const useStyles = makeStyles((colors) => ({
+  greetingBlock: {
+    marginBottom: spacing.xl,
   },
-  headerTitleRow: {
+  greetingText: {
+    ...typography.title1,
+    color: colors.textPrimary,
+  },
+  greetingDate: {
+    ...typography.subhead,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  glassCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing['2xl'],
-    marginTop: spacing.md,
+    overflow: 'hidden',
+  },
+  scrollContainer: { 
+    padding: spacing.xl,
+    paddingBottom: 120,
   },
   mainCard: {
-    backgroundColor: colors.surface,
-    padding: spacing.xl,
-    borderRadius: radius.xl,
     marginBottom: spacing['2xl'],
-    ...shadows.md,
   },
   spendingHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.lg,
   },
+  totalLabel: { marginBottom: 2 },
   mainCardLabel: {
-    ...typography.subhead,
-    color: colors.textSecondary,
+    ...typography.footnote,
+    color: '#FFFFFF',
+    opacity: 0.65,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   mainAmount: {
-    ...typography.largeTitle,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
+    ...typography.amount,
+    fontSize: 44,
+    color: '#FFFFFF',
+    marginTop: spacing.xs,
+    marginBottom: spacing.xl,
   },
   budgetRow: {
     paddingTop: spacing.sm,
@@ -247,18 +354,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   budgetLabel: {
-    ...typography.caption1,
-    color: colors.textSecondary,
+    ...typography.footnote,
+    color: '#FFFFFF',
+    opacity: 0.65,
     fontWeight: '600',
   },
   budgetValue: {
     ...typography.headline,
-    fontWeight: '800',
-    color: colors.textPrimary,
+    color: '#FFFFFF',
+    fontVariant: ['tabular-nums'],
   },
   progressBarContainer: {
-    height: 8,
-    backgroundColor: colors.borderLight,
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     borderRadius: radius.full,
     overflow: 'hidden',
     marginBottom: spacing.xs,
@@ -269,20 +377,21 @@ const styles = StyleSheet.create({
   },
   budgetPercentage: {
     ...typography.caption2,
-    color: colors.textSecondary,
+    color: '#FFFFFF',
+    opacity: 0.65,
     textAlign: 'right',
   },
   setBudgetBtn: {
     paddingVertical: spacing.sm,
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: 'rgba(255,255,255,0.22)',
     marginTop: spacing.md,
   },
   setBudgetBtnText: {
     ...typography.subhead,
-    color: colors.primary,
-    fontWeight: '500',
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -292,9 +401,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   sectionTitle: {
-    ...typography.headline,
+    ...typography.title3,
     color: colors.textPrimary,
-    fontWeight: '700',
   },
   seeAll: {
     ...typography.subhead,
@@ -304,9 +412,11 @@ const styles = StyleSheet.create({
   listCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
     marginBottom: spacing['2xl'],
-    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   listRow: {
     flexDirection: 'row',
@@ -316,12 +426,13 @@ const styles = StyleSheet.create({
   listDivider: {
     height: 1,
     backgroundColor: colors.borderLight,
-    marginLeft: 64, // 48 (icon width) + 16 (margin right)
+    marginLeft: 56, // 44 (icon width) + 12 (margin right)
   },
   listIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.fill,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -349,6 +460,11 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '600',
     color: colors.textPrimary,
+    flexShrink: 1,
+  },
+  recentTxTitle: {
+    flex: 1,
+    marginRight: spacing.sm,
   },
   listSubtitle: {
     ...typography.caption1,
@@ -356,8 +472,10 @@ const styles = StyleSheet.create({
   },
   listAmount: {
     ...typography.body,
-    fontWeight: '700',
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
     color: colors.textPrimary,
+    flexShrink: 0,
   },
   budgetPill: {
     backgroundColor: colors.primarySoft,
@@ -374,7 +492,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   catProgressBarContainer: {
-    height: 6, // Slightly thicker like the wireframe
+    height: 4,
     backgroundColor: colors.borderLight,
     borderRadius: 3,
     width: '100%',
@@ -383,7 +501,7 @@ const styles = StyleSheet.create({
   },
   catProgressBar: {
     height: '100%',
-    backgroundColor: colors.warning,
+    backgroundColor: colors.accent,
     borderRadius: 3,
   },
-});
+}));

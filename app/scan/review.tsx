@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { differenceInDays, format } from 'date-fns';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReceiptStore } from '../../stores/receipt-store';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -9,15 +11,37 @@ import { useCreateTransaction } from '../../features/transactions/hooks/use-crea
 import { manualExpenseSchema } from '../../validation/expense';
 import { normalizeMerchant } from '../../utils/normalize';
 import { queryClient } from '../../lib/query-client';
+import { makeStyles, useTheme } from '../../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { StepIndicator } from '../../components/ui/step-indicator';
+import { DateField } from '../../components/ui/date-field';
+import { ChipSelect, PAYMENT_METHODS } from '../../components/ui/chip-select';
+import { useProfile } from '../../features/auth/hooks/use-profile';
+import { toast } from '../../lib/toast-store';
 
 export default function ReviewScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { aiResult, storagePath, resolvedCategory, clear } = useReceiptStore();
+  const { data: profile } = useProfile();
+  const currency = profile?.currency || 'THB';
 
   const [merchant, setMerchant] = useState(aiResult?.merchant || '');
   const [amount, setAmount] = useState(aiResult?.amount?.toString() || '');
-  const [dateStr, setDateStr] = useState(aiResult?.date || new Date().toISOString().split('T')[0]);
-  const [paymentMethod, setPaymentMethod] = useState(aiResult?.payment_method || '');
+  // The AI sometimes misreads years (e.g. Buddhist-era dates). Don't trust a date that is
+  // in the future or more than 90 days old; use today and tell the user what it read.
+  const aiDate = aiResult?.date ? new Date(aiResult.date) : null;
+  const aiDateValid = !!aiDate && !isNaN(aiDate.getTime());
+  const aiDateSuspicious =
+    aiDateValid && (aiDate! > new Date() || differenceInDays(new Date(), aiDate!) > 90);
+  const [date, setDate] = useState<Date>(() => (aiDateValid && !aiDateSuspicious ? aiDate! : new Date()));
+  const [dateTouched, setDateTouched] = useState(false);
+  // Map AI payment labels onto the chips we offer
+  const normalizePayment = (v?: string | null) =>
+    v === 'debit_card' ? 'credit_card' : v === 'qr_code' ? 'transfer' : v || '';
+  const [paymentMethod, setPaymentMethod] = useState(normalizePayment(aiResult?.payment_method));
   
   // Use resolved category if available, otherwise null
   const [categoryId, setCategoryId] = useState<string | null>(resolvedCategory?.categoryId || null);
@@ -33,11 +57,7 @@ export default function ReviewScreen() {
       setIsSaving(true);
       setErrors({});
       
-      const transactionDate = new Date(dateStr);
-      if (isNaN(transactionDate.getTime())) {
-        setErrors({ dateStr: 'Invalid date format (YYYY-MM-DD)' });
-        return;
-      }
+      const transactionDate = date;
 
       const validData = manualExpenseSchema.parse({
         merchant,
@@ -62,7 +82,7 @@ export default function ReviewScreen() {
       const { error: rpcError } = await supabase.rpc('save_receipt_transaction', {
         p_merchant: validData.merchant,
         p_amount: validData.amount,
-        p_currency: 'THB',
+        p_currency: currency,
         p_category_id: isNewCategory ? null : validData.categoryId,
         p_category_name: isNewCategory ? resolvedCategory.categoryName : null,
         p_category_normalized: isNewCategory ? resolvedCategory.categoryName.toLowerCase().trim() : null,
@@ -96,16 +116,10 @@ export default function ReviewScreen() {
         checkAndTriggerBudgetAlerts(user.user.id, d.getMonth() + 1, d.getFullYear());
       }
 
-      Alert.alert('Success', 'Receipt saved successfully!', [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            clear();
-            router.dismissAll();
-            router.replace('/(tabs)');
-          } 
-        }
-      ]);
+      clear();
+      router.dismissAll();
+      router.replace('/(tabs)');
+      toast.success('Receipt saved');
     } catch (err: any) {
       if (err.errors) {
         const fieldErrors: Record<string, string> = {};
@@ -123,10 +137,10 @@ export default function ReviewScreen() {
 
   const getBadgeColor = (source?: string) => {
     switch(source) {
-      case 'merchant_rule': return '#34C759'; // Green
-      case 'ai_match': return '#007AFF'; // Blue
-      case 'ai_new': return '#FF9500'; // Orange
-      default: return '#8E8E93'; // Gray
+      case 'merchant_rule': return colors.success;
+      case 'ai_match': return colors.textPrimary;
+      case 'ai_new': return colors.warning;
+      default: return colors.textMuted;
     }
   };
 
@@ -135,9 +149,31 @@ export default function ReviewScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          onPress={() => {
+            clear();
+            router.dismissAll();
+          }}
+          disabled={isSaving}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel and discard this receipt"
+        >
+          <Text style={styles.topCancel}>Cancel</Text>
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Review receipt</Text>
+        <View style={styles.topSpacer} />
+      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.stepWrap}>
+          <StepIndicator step={3} label="Confirm details" />
+        </View>
         <View style={styles.aiBanner}>
-          <Text style={styles.aiText}>✨ AI found the following details</Text>
+          <View style={styles.aiTitleRow}>
+            <Ionicons name="sparkles-outline" size={16} color={colors.textPrimary} />
+            <Text style={styles.aiText}>AI found these details</Text>
+          </View>
           {aiResult?.confidence && (
             <Text style={styles.aiConfidence}>Confidence: {(aiResult.confidence * 100).toFixed(0)}%</Text>
           )}
@@ -150,31 +186,33 @@ export default function ReviewScreen() {
           error={errors.merchant}
         />
 
-        <View style={{flexDirection: 'row', gap: 12}}>
-          <View style={{flex: 1}}>
-            <Input
-              label="Amount (THB)"
-              keyboardType="decimal-pad"
-              value={amount}
-              onChangeText={setAmount}
-              error={errors.amount}
-            />
-          </View>
-          <View style={{flex: 1}}>
-            <Input
-              label="Date (YYYY-MM-DD)"
-              value={dateStr}
-              onChangeText={setDateStr}
-              error={errors.dateStr}
-            />
-          </View>
-        </View>
-
         <Input
-          label="Payment Method"
+          label={`Amount (${currency})`}
+          keyboardType="decimal-pad"
+          value={amount}
+          onChangeText={setAmount}
+          error={errors.amount}
+        />
+
+        <DateField
+          label="Date"
+          value={date}
+          onChange={(d) => {
+            setDate(d);
+            setDateTouched(true);
+          }}
+          hint={
+            aiDateSuspicious && !dateTouched && aiDate
+              ? `The receipt looked like ${format(aiDate, 'd MMM yyyy')}. We used today instead — change it if that's wrong.`
+              : undefined
+          }
+        />
+
+        <ChipSelect
+          label="Paid with"
+          options={PAYMENT_METHODS}
           value={paymentMethod}
-          onChangeText={setPaymentMethod}
-          placeholder="e.g. credit_card, cash"
+          onChange={setPaymentMethod}
         />
 
         <View style={styles.categorySection}>
@@ -184,7 +222,7 @@ export default function ReviewScreen() {
             <View style={styles.resolvedCategoryBox}>
               <View style={styles.resolvedTop}>
                 <Text style={styles.resolvedName}>
-                  {resolvedCategory.isNew ? `🆕 ${resolvedCategory.categoryName}` : resolvedCategory.categoryName}
+                  {resolvedCategory.isNew ? `${resolvedCategory.categoryName} (new)` : resolvedCategory.categoryName}
                 </Text>
                 <Button 
                   title="Change" 
@@ -215,7 +253,7 @@ export default function ReviewScreen() {
             {aiResult.items.map((item: any, idx: number) => (
               <View key={idx} style={styles.itemRow}>
                 <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemPrice}>{item.total_price} THB</Text>
+                <Text style={styles.itemPrice}>{item.total_price} {currency}</Text>
               </View>
             ))}
           </View>
@@ -230,68 +268,75 @@ export default function ReviewScreen() {
         />
 
         <Button 
-          title="Confirm & Save" 
+          title="Save receipt" 
           onPress={handleSave} 
           loading={isSaving}
           style={styles.button}
         />
         
-        <Button 
-          title="Cancel" 
-          variant="secondary"
-          onPress={() => {
-            clear();
-            router.dismissAll();
-          }} 
-          style={styles.cancelButton}
-          disabled={isSaving}
-        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   scrollContent: {
     padding: 24,
-    paddingTop: 48,
+    paddingTop: 12,
+    paddingBottom: 64,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  topCancel: { fontSize: 17, color: colors.textPrimary },
+  topTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+  topSpacer: { width: 52 },
+  stepWrap: { marginBottom: 20 },
   aiBanner: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     marginBottom: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  aiTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   aiText: {
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.textPrimary,
   },
   aiConfidence: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   categorySection: {
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-    fontWeight: '500',
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 6,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   resolvedCategoryBox: {
     borderWidth: 1,
-    borderColor: '#007AFF',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: 14,
     padding: 16,
-    backgroundColor: '#F0F8FF',
+    backgroundColor: colors.surface,
   },
   resolvedTop: {
     flexDirection: 'row',
@@ -302,10 +347,10 @@ const styles = StyleSheet.create({
   resolvedName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.textPrimary,
   },
   changeBtn: {
-    color: '#007AFF',
+    color: colors.textPrimary,
     fontWeight: '500',
   },
   resolvedLabel: {
@@ -317,12 +362,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
-    borderRadius: 8,
-    backgroundColor: '#F9F9F9',
+    borderColor: colors.borderLight,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
   },
   itemsTitle: {
     fontWeight: '600',
+    color: colors.textPrimary,
     marginBottom: 12,
   },
   itemRow: {
@@ -332,11 +378,12 @@ const styles = StyleSheet.create({
   },
   itemName: {
     flex: 1,
-    color: '#333',
+    color: colors.textPrimary,
     marginRight: 16,
   },
   itemPrice: {
     fontWeight: '500',
+    color: colors.textPrimary,
   },
   button: {
     marginTop: 12,
@@ -344,4 +391,4 @@ const styles = StyleSheet.create({
   cancelButton: {
     marginTop: 12,
   }
-});
+}));

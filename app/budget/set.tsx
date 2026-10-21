@@ -8,10 +8,15 @@ import { useBudgets } from '../../features/budgets/hooks/use-budgets';
 import { useCreateBudget } from '../../features/budgets/hooks/use-create-budget';
 import { useUpdateBudget } from '../../features/budgets/hooks/use-update-budget';
 import { useDeleteBudget } from '../../features/budgets/hooks/use-delete-budget';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import { useProfile } from '../../features/auth/hooks/use-profile';
+import { toast } from '../../lib/toast-store';
+import { spacing, typography, radius, makeStyles } from '../../theme';
 
 export default function SetBudgetScreen() {
+  const styles = useStyles();
   const router = useRouter();
+  const { data: profile } = useProfile();
+  const currency = profile?.currency || 'THB';
   const { id, type, month: paramMonth, year: paramYear } = useLocalSearchParams<{ id?: string, type?: string, month?: string, year?: string }>();
   
   // Always use current month for simplicity in MVP, or let user pick.
@@ -54,7 +59,7 @@ export default function SetBudgetScreen() {
       updateBudget.mutate(
         { id: id!, limitAmount: limit, month: currentMonth, year: currentYear },
         {
-          onSuccess: () => router.back(),
+          onSuccess: () => { toast.success('Budget updated'); router.back(); },
           onError: (err) => Alert.alert('Error', err.message)
         }
       );
@@ -62,7 +67,7 @@ export default function SetBudgetScreen() {
       createBudget.mutate(
         { categoryId: isOverall ? null : categoryId, limitAmount: limit, month: currentMonth, year: currentYear },
         {
-          onSuccess: () => router.back(),
+          onSuccess: () => { toast.success('Budget created'); router.back(); },
           onError: (err) => Alert.alert('Error', err.message)
         }
       );
@@ -93,7 +98,7 @@ export default function SetBudgetScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text style={styles.headerTitle}>
             {isEditing ? 'Edit Budget' : 'Set New Budget'}
@@ -124,11 +129,13 @@ export default function SetBudgetScreen() {
           )}
 
           <Input 
-            label="Monthly Limit"
+            label={`Monthly limit (${currency})`}
             value={limitAmount}
             onChangeText={setLimitAmount}
             placeholder="0.00"
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
           />
           
           <Button 
@@ -154,18 +161,18 @@ export default function SetBudgetScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg },
-  card: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, ...shadows.sm, marginBottom: spacing['2xl'] },
+  card: { backgroundColor: colors.surface, padding: spacing.xl, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.borderLight, marginBottom: spacing['2xl'] },
   headerTitle: { ...typography.title3, color: colors.textPrimary, marginBottom: spacing.xs },
   headerSubtitle: { ...typography.subhead, color: colors.textSecondary, marginBottom: spacing.xl },
   pickerContainer: { marginBottom: spacing.lg },
-  label: { ...typography.subhead, color: colors.textPrimary, marginBottom: spacing.sm, fontWeight: '500' },
+  label: { ...typography.footnote, color: colors.textSecondary, marginBottom: spacing.sm, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
   readOnlyCategory: { marginBottom: spacing.lg },
-  categoryBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: spacing.md, borderRadius: radius.md },
+  categoryBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.fill, padding: spacing.md, borderRadius: radius.md },
   categoryIcon: { fontSize: 20, marginRight: spacing.sm },
   categoryName: { ...typography.body, color: colors.textPrimary },
   saveButton: { marginTop: spacing.md },
   dangerZone: { paddingHorizontal: spacing.sm },
-});
+}));

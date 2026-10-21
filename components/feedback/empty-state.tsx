@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Button } from '../ui/button';
-import { colors, spacing, typography } from '../../theme';
+import { spacing, typography, makeStyles, useTheme } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 interface EmptyStateProps {
@@ -13,10 +13,12 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, ionicon, title, subtitle, action }: EmptyStateProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       {ionicon ? (
-        <Ionicons name={ionicon} size={64} color={colors.textMuted} style={styles.icon} />
+        <Ionicons name={ionicon} size={40} color={colors.textMuted} style={styles.icon} />
       ) : icon ? (
         <Text style={styles.iconText}>{icon}</Text>
       ) : null}
@@ -34,7 +36,7 @@ export function EmptyState({ icon, ionicon, title, subtitle, action }: EmptyStat
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     padding: spacing['3xl'],
     justifyContent: 'center',
@@ -63,4 +65,4 @@ const styles = StyleSheet.create({
   button: {
     minWidth: 160,
   }
-});
+}));

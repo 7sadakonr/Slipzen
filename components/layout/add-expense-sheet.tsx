@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedba
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
+import { typography, spacing, radius, shadows, makeStyles, useTheme } from '../../theme';
 import { useReceiptStore } from '../../stores/receipt-store';
 
 interface AddExpenseSheetProps {
@@ -12,6 +12,8 @@ interface AddExpenseSheetProps {
 }
 
 export function AddExpenseSheet({ visible, onClose }: AddExpenseSheetProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
   const { setImage, clear } = useReceiptStore();
 
@@ -100,7 +102,7 @@ export function AddExpenseSheet({ visible, onClose }: AddExpenseSheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -157,4 +159,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-});
+}));

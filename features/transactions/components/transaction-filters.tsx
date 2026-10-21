@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryPicker } from '../../categories/components/category-picker';
-import { colors, spacing, radius, typography } from '../../../theme';
+import { spacing, radius, typography, makeStyles, useTheme } from '../../../theme';
 
 interface TransactionFiltersProps {
   search: string;
@@ -14,6 +14,8 @@ interface TransactionFiltersProps {
 export function TransactionFilters({
   search, onSearchChange, categoryId, onCategoryChange
 }: TransactionFiltersProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   
   const [localSearch, setLocalSearch] = useState(search);
 
@@ -42,7 +44,7 @@ export function TransactionFilters({
         <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search merchant..."
+          placeholder="Search merchant"
           value={localSearch}
           onChangeText={setLocalSearch}
           placeholderTextColor={colors.textMuted}
@@ -62,33 +64,33 @@ export function TransactionFilters({
           onChange={onCategoryChange} 
         />
         {categoryId && (
-          <Ionicons 
-            name="close-circle" 
-            size={24} 
-            color={colors.danger} 
-            style={styles.clearCategory}
-            onPress={() => onCategoryChange(null)} 
-          />
+          <TouchableOpacity
+            style={styles.clearChip}
+            onPress={() => onCategoryChange(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Clear category filter"
+          >
+            <Text style={styles.clearChipText}>Clear</Text>
+            <Ionicons name="close" size={14} color={colors.textPrimary} />
+          </TouchableOpacity>
         )}
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
+    backgroundColor: colors.fill,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.md,
-    height: 40,
+    height: 44,
     marginBottom: spacing.md,
   },
   searchIcon: {
@@ -103,7 +105,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  clearCategory: {
+  clearChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginLeft: spacing.sm,
+    paddingHorizontal: spacing.md,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.fill,
+  },
+  clearChipText: {
+    ...typography.footnote,
+    fontWeight: '600',
+    color: colors.textPrimary,
   }
-});
+}));

@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, DynamicColorIOS, Platform } from 'react-native';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { colors } from '../../theme';
+import { makeStyles, useTheme } from '../../theme';
 import { setLastNonAddTab } from '../../lib/add-tab-state';
 
 export default function TabsLayout() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -26,8 +28,12 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <NativeTabs
-        tintColor={colors.primary}
-        shadowColor="transparent"
+        tintColor={
+          Platform.OS === 'ios'
+            ? DynamicColorIOS({ light: '#0A0A0A', dark: '#FAFAFA' })
+            : colors.primary
+        }
+        minimizeBehavior="onScrollDown"
       >
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
@@ -72,7 +78,7 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   touchInterceptorContainer: {
     position: 'absolute',
     left: 0,
@@ -82,4 +88,4 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     zIndex: 999,
   }
-});
+}));

@@ -1,32 +1,17 @@
 import React from 'react';
-import { 
-  Pressable, 
-  Text, 
-  StyleSheet, 
-  ActivityIndicator, 
-  ViewStyle, 
+import {
+  Pressable,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
   TextStyle,
   Platform,
   View,
-  useColorScheme
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { colors, typography, spacing, radius } from '../../theme';
-
-// Safely import Expo UI SwiftUI bindings for iOS
-let Host: any, SwiftUIButton: any, buttonStyle: any, foregroundStyle: any;
-if (Platform.OS === 'ios') {
-  try {
-    const expoUi = require('@expo/ui/swift-ui');
-    const modifiers = require('@expo/ui/swift-ui/modifiers');
-    Host = expoUi.Host;
-    SwiftUIButton = expoUi.Button;
-    buttonStyle = modifiers.buttonStyle;
-    foregroundStyle = modifiers.foregroundStyle;
-  } catch (e) {
-    console.warn('Expo UI SwiftUI not available', e);
-  }
-}
+import { makeStyles, typography, spacing, radius, useTheme } from '../../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Glass, canUseGlass } from './glass';
 
 interface ButtonProps {
   title: string;
@@ -38,7 +23,44 @@ interface ButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
+  /** Use light-on-dark colors (e.g. over a camera preview or photo). */
+  onDark?: boolean;
 }
+
+const HEIGHTS = { sm: 36, md: 48, lg: 54 } as const;
+const SIZE_TEXT = {
+  sm: { fontSize: typography.subhead.fontSize },
+  md: { fontSize: typography.body.fontSize },
+  lg: { fontSize: typography.headline.fontSize },
+} as const;
+
+const useStyles = makeStyles((c) => ({
+  base: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: radius.full,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  glassPress: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  text: { fontWeight: '600', textAlign: 'center' },
+  smText: { fontSize: typography.subhead.fontSize },
+  mdText: { fontSize: typography.body.fontSize },
+  lgText: { fontSize: typography.headline.fontSize },
+  primary: { backgroundColor: c.primary },
+  primaryText: { color: c.onPrimary },
+  secondary: { backgroundColor: c.fill },
+  secondaryText: { color: c.textPrimary },
+  outline: { backgroundColor: 'transparent', borderColor: c.border },
+  outlineText: { color: c.textPrimary },
+  danger: { backgroundColor: c.danger },
+  dangerText: { color: '#FFFFFF' },
+  disabled: { opacity: 0.45 },
+  onDarkPrimary: { backgroundColor: '#FFFFFF' },
+  onDarkSecondary: { backgroundColor: 'rgba(255,255,255,0.18)' },
+}));
 
 export function Button({
   title,
@@ -50,285 +72,108 @@ export function Button({
   style,
   textStyle,
   icon,
+  onDark = false,
 }: ButtonProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const sizeStyles = getSizeStyles(size);
+  const { colors, isDark } = useTheme();
+  const styles = useStyles();
+  const inactive = disabled || loading;
 
-  // iOS Native Liquid Glass implementation
-  if (Platform.OS === 'ios' && Host && SwiftUIButton && buttonStyle && foregroundStyle) {
-    let modifier = buttonStyle('bordered');
-    let fgModifier = foregroundStyle(colors.surface);
-    const isDestructive = variant === 'danger';
-
-    if (variant === 'primary') {
-      modifier = buttonStyle('glassProminent');
-      fgModifier = foregroundStyle(isDark ? '#ffffff' : '#ffffff');
-    } else if (variant === 'secondary' || variant === 'outline') {
-      modifier = buttonStyle('glass');
-      fgModifier = foregroundStyle(isDark ? '#ffffff' : colors.primary);
-    }
-
-    const hostStyle: ViewStyle = {
-      justifyContent: 'center',
-      alignItems: 'center',
-      ...sizeStyles.container,
-      ...style,
-    };
+  // iOS 26+: native Liquid Glass. Colors are always decided in JS so the label stays
+  // readable in both color schemes (never rely on the system 'auto' scheme here).
+  if (canUseGlass()) {
+    const prominent = variant === 'primary' || variant === 'danger';
+    const glassTint = variant === 'danger' ? colors.danger : variant === 'primary' ? (onDark ? '#FFFFFF' : colors.primary) : undefined;
+    const labelColor =
+      variant === 'danger'
+        ? '#FFFFFF'
+        : variant === 'primary'
+          ? onDark
+            ? '#0A0A0A'
+            : colors.onPrimary
+          : onDark
+            ? '#FFFFFF'
+            : colors.textPrimary;
 
     return (
-      <Host matchContents style={hostStyle}>
-        <SwiftUIButton
-          label={title}
+      <Glass
+        isInteractive
+        tintColor={glassTint}
+        colorScheme={onDark ? 'dark' : undefined}
+        style={[
+          { height: HEIGHTS[size], borderRadius: radius.full, overflow: 'hidden', opacity: inactive ? 0.5 : 1 },
+          style,
+        ]}
+      >
+        <Pressable
           onPress={onPress}
-          disabled={disabled || loading}
-          modifiers={[modifier]}
-          // Destructive styling in iOS relies on role or tint, assuming standard SwiftUI button role or tint mapping
-          role={isDestructive ? 'destructive' : undefined} 
-        />
-      </Host>
-    );
-  }
-
-
-
-  // Fallback Implementation for Android / Unavailability
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'primary':
-        return {
-          container: [styles.primaryContainer, disabled && styles.primaryDisabled],
-          glass: [styles.primaryGlass, disabled && styles.glassDisabled],
-          text: [styles.primaryText, disabled && styles.disabledText],
-          tint: 'default' as const,
-          intensity: 60,
-        };
-      case 'secondary':
-        return {
-          container: [styles.secondaryContainer, disabled && styles.secondaryDisabled],
-          glass: [styles.secondaryGlass, disabled && styles.glassDisabled],
-          // Ensure secondary text is visible on its glass background
-          text: [{ color: isDark ? '#ffffff' : colors.primary }, disabled && styles.disabledText],
-          tint: 'default' as const,
-          intensity: 50,
-        };
-      case 'outline':
-        return {
-          container: [styles.outlineContainer, disabled && styles.outlineDisabled],
-          glass: [styles.outlineGlass, disabled && styles.glassDisabled],
-          text: [{ color: isDark ? '#ffffff' : colors.textPrimary }, disabled && styles.disabledText],
-          tint: 'default' as const,
-          intensity: 30,
-        };
-      case 'danger':
-        return {
-          container: [styles.dangerContainer, disabled && styles.dangerDisabled],
-          glass: [styles.dangerGlass, disabled && styles.glassDisabled],
-          text: [styles.dangerText, disabled && styles.disabledText],
-          tint: 'default' as const,
-          intensity: 60,
-        };
-      default:
-        return {
-          container: styles.primaryContainer,
-          glass: styles.primaryGlass,
-          text: styles.primaryText,
-          tint: 'default' as const,
-          intensity: 60,
-        };
-    }
-  };
-
-  const variantStyles = getVariantStyles();
-
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled || loading}
-      style={({ pressed }) => [
-        styles.baseContainer,
-        sizeStyles.container,
-        variantStyles.container,
-        style,
-        // Remove opacity fade to avoid background bleed
-      ]}
-    >
-      {({ pressed }) => (
-        <>
-          <BlurView
-            intensity={variantStyles.intensity}
-            tint={variantStyles.tint}
-            style={[
-              StyleSheet.absoluteFill, 
-              variantStyles.glass,
-            ]}
-          />
-          {pressed && (
-            <View 
-              style={[
-                StyleSheet.absoluteFill, 
-                { backgroundColor: variant === 'secondary' || variant === 'outline' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)' }
-              ]} 
-            />
-          )}
-          
-          <View style={[styles.contentRow]}>
+          disabled={inactive}
+          accessibilityRole="button"
+          accessibilityLabel={title}
+          accessibilityState={{ disabled: inactive, busy: loading }}
+          style={[styles.glassPress, { paddingHorizontal: spacing.xl }]}
+        >
+          <View style={styles.row}>
             {loading ? (
-              <ActivityIndicator 
-                color={variant === 'primary' || variant === 'danger' ? colors.surface : colors.primary} 
-                size="small" 
-              />
+              <ActivityIndicator color={labelColor} size="small" />
             ) : (
               <>
-                {icon && <React.Fragment>{icon}</React.Fragment>}
-                <Text style={[styles.baseText, sizeStyles.text, variantStyles.text, textStyle]}>
+                {icon}
+                <Text style={[styles.text, { color: labelColor, fontWeight: prominent ? '700' : '600' }, SIZE_TEXT[size], textStyle]}>
                   {title}
                 </Text>
               </>
             )}
           </View>
-        </>
+        </Pressable>
+      </Glass>
+    );
+  }
+
+  // Android / fallback: solid pill
+  const textVariant = onDark
+    ? { color: variant === 'primary' ? '#0A0A0A' : '#FFFFFF' }
+    : {
+        primary: styles.primaryText,
+        secondary: styles.secondaryText,
+        outline: styles.outlineText,
+        danger: styles.dangerText,
+      }[variant];
+  const sizeText = { sm: styles.smText, md: styles.mdText, lg: styles.lgText }[size];
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={inactive}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.base,
+        styles[variant],
+        { height: HEIGHTS[size], paddingHorizontal: spacing.xl },
+        onDark && (variant === 'primary' ? styles.onDarkPrimary : styles.onDarkSecondary),
+        inactive && styles.disabled,
+        pressed && { opacity: 0.8 },
+        style,
+      ]}
+    >
+      {variant === 'primary' && !isDark && !onDark && (
+        <LinearGradient
+          pointerEvents="none"
+          colors={colors.cardGradient as unknown as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
       )}
+      <View style={styles.row}>
+        {loading ? (
+          <ActivityIndicator color={variant === 'primary' ? colors.onPrimary : colors.textPrimary} size="small" />
+        ) : (
+          <>
+            {icon}
+            <Text style={[styles.text, sizeText, textVariant, textStyle]}>{title}</Text>
+          </>
+        )}
+      </View>
     </Pressable>
   );
 }
-
-// Helpers
-function getSizeStyles(size: string) {
-  switch (size) {
-    case 'sm':
-      return { container: styles.smContainer, text: styles.smText };
-    case 'lg':
-      return { container: styles.lgContainer, text: styles.lgText };
-    case 'md':
-    default:
-      return { container: styles.mdContainer, text: styles.mdText };
-  }
-}
-
-const styles = StyleSheet.create({
-  baseContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    zIndex: 1,
-  },
-  baseText: {
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  
-  // Sizes
-  smContainer: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  mdContainer: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  lgContainer: {
-    paddingVertical: 18,
-    paddingHorizontal: spacing['2xl'],
-  },
-  smText: {
-    fontSize: typography.subhead.fontSize,
-  },
-  mdText: {
-    fontSize: typography.body.fontSize,
-  },
-  lgText: {
-    fontSize: typography.title3.fontSize,
-  },
-
-  // Primary Variant
-  primaryContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      }
-    })
-  },
-  primaryGlass: {
-    backgroundColor: 'rgba(119, 122, 255, 0.9)',
-  },
-  primaryText: {
-    color: colors.surface,
-  },
-  primaryDisabled: {
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    shadowOpacity: 0,
-  },
-
-  // Secondary Variant
-  secondaryContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  secondaryGlass: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  secondaryText: {
-    color: colors.primary,
-  },
-  secondaryDisabled: {
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-
-  // Outline Variant
-  outlineContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: 'rgba(119, 122, 255, 0.5)',
-  },
-  outlineGlass: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  outlineText: {
-    color: colors.textPrimary,
-  },
-  outlineDisabled: {
-    borderColor: colors.borderLight,
-  },
-
-  // Danger Variant
-  dangerContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  dangerGlass: {
-    backgroundColor: 'rgba(255, 59, 48, 0.9)',
-  },
-  dangerText: {
-    color: colors.surface,
-  },
-  dangerDisabled: {
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-
-  // Shared Disabled Glass
-  glassDisabled: {
-    backgroundColor: 'rgba(150, 150, 150, 0.15)',
-  },
-  disabledText: {
-    color: colors.textMuted,
-  },
-});

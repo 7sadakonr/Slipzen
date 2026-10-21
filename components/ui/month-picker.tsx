@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, radius } from '../../theme';
+import { Glass } from './glass';
+import { typography, spacing, radius, makeStyles, useTheme } from '../../theme';
 import { format, subMonths, addMonths } from 'date-fns';
 
 import { useAvailableMonths } from '../../features/transactions/hooks/use-available-months';
@@ -13,6 +14,8 @@ interface MonthPickerProps {
 }
 
 export function MonthPicker({ currentDate, onChange }: MonthPickerProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { data: availableMonths = [] } = useAvailableMonths();
 
   const currentMonthStart = startOfMonth(currentDate).getTime();
@@ -36,9 +39,9 @@ export function MonthPicker({ currentDate, onChange }: MonthPickerProps) {
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={handlePrev} style={[styles.button, !canGoPrev && { opacity: 0.3 }]} disabled={!canGoPrev}>
-        <Ionicons name="chevron-back" size={24} color={colors.primary} />
+    <Glass style={styles.container}>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Previous month" onPress={handlePrev} style={[styles.button, !canGoPrev && { opacity: 0.3 }]} disabled={!canGoPrev}>
+        <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
       </TouchableOpacity>
       
       <View style={styles.dateDisplay}>
@@ -46,19 +49,19 @@ export function MonthPicker({ currentDate, onChange }: MonthPickerProps) {
         <Text style={styles.yearText}>{format(currentDate, 'yyyy')}</Text>
       </View>
       
-      <TouchableOpacity onPress={handleNext} style={[styles.button, !canGoNext && { opacity: 0.3 }]} disabled={!canGoNext}>
-        <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Next month" onPress={handleNext} style={[styles.button, !canGoNext && { opacity: 0.3 }]} disabled={!canGoNext}>
+        <Ionicons name="chevron-forward" size={24} color={colors.textPrimary} />
       </TouchableOpacity>
-    </View>
+    </Glass>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface,
+    overflow: 'hidden',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
@@ -81,4 +84,4 @@ const styles = StyleSheet.create({
     ...typography.caption2,
     color: colors.textMuted,
   }
-});
+}));

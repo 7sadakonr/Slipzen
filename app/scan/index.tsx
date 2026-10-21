@@ -8,10 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassView } from 'expo-glass-effect';
 import { useReceiptStore } from '../../stores/receipt-store';
 import { Button } from '../../components/ui/button';
+import { makeStyles } from '../../theme';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function CameraScreen() {
+  const styles = useStyles();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
@@ -31,8 +33,9 @@ export default function CameraScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.text}>We need your permission to show the camera</Text>
-        <Button title="Grant Permission" onPress={requestPermission} />
+        <Text style={styles.text}>Slipzen needs camera access to scan receipts.</Text>
+        <Button title="Allow camera" onPress={requestPermission} onDark />
+        <Button title="Not now" variant="secondary" onDark onPress={() => router.back()} style={{ marginTop: 12 }} />
       </View>
     );
   }
@@ -67,17 +70,18 @@ export default function CameraScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" hidden={true} />
-      <CameraView 
-        style={styles.camera} 
-        facing="back" 
-        flash={flash} 
-        enableTorch={flash === 'on'} 
+      {/* CameraView doesn't support children, so the controls are an absolutely positioned sibling */}
+      <CameraView
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        flash={flash}
+        enableTorch={flash === 'on'}
         ref={cameraRef}
-      >
-        <SafeAreaView style={styles.safeArea}>
+      />
+      <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
           {/* Top Controls */}
           <View style={styles.topControls}>
-            <GlassView tintColor="#333333" style={styles.glassButtonSmall}>
+            <GlassView colorScheme="dark" tintColor="#333333" style={styles.glassButtonSmall}>
               <Pressable onPress={() => router.back()} style={StyleSheet.absoluteFill}>
                 {({ pressed }) => (
                   <View style={[
@@ -99,7 +103,7 @@ export default function CameraScreen() {
               <View style={[styles.corner, styles.bottomLeft, { borderColor: 'rgba(255, 255, 255, 0.8)' }]} />
               <View style={[styles.corner, styles.bottomRight, { borderColor: 'rgba(255, 255, 255, 0.8)' }]} />
             </View>
-            <GlassView tintColor="#333333" style={styles.guideTextContainer}>
+            <GlassView colorScheme="dark" tintColor="#333333" style={styles.guideTextContainer}>
               <Text style={[styles.guideText, { color: '#ffffff' }]}>Align receipt within frame</Text>
             </GlassView>
           </View>
@@ -107,7 +111,7 @@ export default function CameraScreen() {
           {/* Bottom Controls */}
           <View style={styles.bottomControls}>
             <View style={styles.sideButtonContainer}>
-              <GlassView tintColor="#333333" style={styles.glassButtonMedium}>
+              <GlassView colorScheme="dark" tintColor="#333333" style={styles.glassButtonMedium}>
                 <Pressable onPress={pickImage} style={StyleSheet.absoluteFill}>
                   {({ pressed }) => (
                     <View style={[
@@ -121,8 +125,13 @@ export default function CameraScreen() {
               </GlassView>
             </View>
 
-            <GlassView tintColor="#333333" style={styles.captureButtonOuter}>
-              <Pressable onPress={takePicture} style={StyleSheet.absoluteFill}>
+            <GlassView colorScheme="dark" tintColor="#333333" style={styles.captureButtonOuter}>
+              <Pressable
+                onPress={takePicture}
+                style={StyleSheet.absoluteFill}
+                accessibilityRole="button"
+                accessibilityLabel="Take photo"
+              >
                 {({ pressed }) => (
                   <View style={[
                     {flex: 1, justifyContent: 'center', alignItems: 'center'},
@@ -135,7 +144,7 @@ export default function CameraScreen() {
             </GlassView>
 
             <View style={styles.sideButtonContainer}>
-              <GlassView tintColor="#333333" style={styles.glassButtonMedium}>
+              <GlassView colorScheme="dark" tintColor="#333333" style={styles.glassButtonMedium}>
                 <Pressable onPress={toggleFlash} style={StyleSheet.absoluteFill}>
                   {({ pressed }) => (
                     <View style={[
@@ -153,13 +162,12 @@ export default function CameraScreen() {
               </GlassView>
             </View>
           </View>
-        </SafeAreaView>
-      </CameraView>
+      </SafeAreaView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flex: 1,
     backgroundColor: 'black',
@@ -181,7 +189,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safeArea: {
-    flex: 1,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'space-between',
   },
   topControls: {
@@ -229,7 +241,8 @@ const styles = StyleSheet.create({
   },
   guideFrame: {
     width: width * 0.85,
-    height: width * 1.3,
+    // keep the shutter row on screen on short devices
+    height: Math.min(width * 1.3, height * 0.5),
     position: 'relative',
   },
   corner: {
@@ -303,4 +316,4 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   }
-});
+}));
